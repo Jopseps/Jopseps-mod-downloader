@@ -28,6 +28,7 @@ echo [APP] Jopseps Mod Downloader
 echo ---------------------------------
 echo AppID              : %APPID%
 echo SteamCMD Path      : %STEAMCMD%
+echo Download Path      : %DOWNLOAD_PATH%
 echo Move After Download: %MOVE_AFTER_DOWNLOAD%
 echo Move Path          : %MOVE_PATH%
 echo ---------------------------------
@@ -85,6 +86,7 @@ echo === Starting download... ===
 echo.
 echo === Download completed ===
 
+
 :: === Move Mods ===
 if "%MOVE_AFTER_DOWNLOAD%"=="1" (
     echo.
@@ -106,6 +108,9 @@ if "%MOVE_AFTER_DOWNLOAD%"=="1" (
         )
     )
     echo === Downloaded mods have been moved ===
+    echo Find the mods in %MOVE_PATH%
+) else (
+    echo Find the mods in %DOWNLOAD_PATH%
 )
 
 del "%SCRIPT%" >nul 2>&1
