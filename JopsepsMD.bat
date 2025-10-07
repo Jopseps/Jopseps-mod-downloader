@@ -65,13 +65,6 @@ set "RAWINPUT=!RAWINPUT:^&=^&!"
 for /f "tokens=2 delims==&" %%X in ("!RAWINPUT!") do set "RAWINPUT=%%X"
 for /f "tokens=1 delims=&? " %%Z in ("!RAWINPUT!") do set "ID=%%Z"
 
-:: === Validate numeric ===
-echo !ID! | findstr "^[0-9][0-9]*$" >nul
-if errorlevel 1 (
-    echo [WARNING] Could not parse valid ID from: !RAWINPUT!
-    goto loop
-)
-
 :: === Add to list ===
 findstr /x /c:"!ID!" "%IDLIST%" >nul 2>&1
 if errorlevel 1 (
@@ -112,6 +105,7 @@ if "%MOVE_AFTER_DOWNLOAD%"=="1" (
             echo [INFO] Folder for ID %%I not found: !MODDIR!
         )
     )
+    echo === Downloaded mods have been moved ===
 )
 
 del "%SCRIPT%" >nul 2>&1
