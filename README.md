@@ -39,3 +39,7 @@ is a basic mod downloader for any Steam game that uses terminal / cmd to downloa
 **4.** Right after downloading, **you will be informed where your files are located**, you can move the mods manually or configure the auto move after download in `config.ini` file.
 
 
+# Changelog
+
+### Version 1 (2025-10-8)
+- Release
