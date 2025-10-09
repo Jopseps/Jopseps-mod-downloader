@@ -3,9 +3,9 @@ is a basic mod downloader for any Steam game that uses terminal / cmd to downloa
 
 ## Setup
 
-0. Download SteamCMD from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
+**0.** Download **SteamCMD** from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
 
-1. Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
+**1.** Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
 
 ## Configuration
 *Example*:
