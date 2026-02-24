@@ -19,7 +19,7 @@ for /f "usebackq tokens=1,* delims==" %%A in ("%CONFIG%") do (
 :: === VALIDATE CONFIG ===
 set "CHANGED="
 
-:: --- APPID ---
+:: === APPID ===
 :validate_appid
 if not defined APPID goto prompt_appid
 echo !APPID!| findstr /r "^[0-9][0-9]*$" >nul 2>&1
@@ -38,7 +38,7 @@ if errorlevel 1 (
 set "CHANGED=!CHANGED!APPID,"
 :appid_ok
 
-:: --- STEAMCMDFOLDER ---
+:: === STEAMCMDFOLDER ===
 :validate_steamcmd
 if not defined STEAMCMDFOLDER goto prompt_steamcmd
 if not exist "!STEAMCMDFOLDER!\*" goto prompt_steamcmd
@@ -55,7 +55,7 @@ if not exist "!STEAMCMDFOLDER!\*" (
 set "CHANGED=!CHANGED!STEAMCMDFOLDER,"
 :steamcmd_ok
 
-:: --- MOVE_PATH (only when MOVE_AFTER_DOWNLOAD=1) ---
+:: === MOVE_PATH (only when MOVE_AFTER_DOWNLOAD=1) ===
 if not "%MOVE_AFTER_DOWNLOAD%"=="1" goto movepath_ok
 
 :validate_movepath
@@ -158,6 +158,7 @@ echo [ERROR] Could not detect a valid Workshop ID. Please try again.
 goto loop
 
 :check_id
+
 :: === Add to list ===
 findstr /x /c:"!ID!" "%IDLIST%" >nul 2>&1
 if errorlevel 1 (
@@ -212,6 +213,7 @@ goto main
 
 :: === SAVE CONFIG FUNCTION ===
 :save_config
+
 :: Create a temp file with updated config
 set "TMPCONFIG=%temp%\config_tmp.ini"
 if exist "%TMPCONFIG%" del "%TMPCONFIG%" >nul
