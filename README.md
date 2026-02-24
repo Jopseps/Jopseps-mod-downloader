@@ -1,45 +1,108 @@
 # Jopseps Mod Downloader
-is a basic mod downloader for any Steam game that uses terminal / cmd to download from Steam workshop server
 
-## Setup
+A lightweight mod downloader for any Steam game. Uses SteamCMD under the hood — no login required, downloads directly from the Steam Workshop server.
 
-0. Download SteamCMD from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
+- **Windows** → `JopsepsMD.bat`
+- **Linux** → `JopsepsMD.py`
 
-1. Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
+---
+
+## Requirements
+
+### SteamCMD
+Download and set up SteamCMD before using Mod Downloader.
+
+1. Download SteamCMD:
+   - **Windows**: https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip
+   - **Linux**: `sudo apt install steamcmd` or download from the same link
+2. Extract the zip and run `steamcmd.exe` (Windows) or `./steamcmd.sh` (Linux) once — it will download and set itself up, then you can close it.
+
+### Python (Linux only)
+Python 3 is required to run `JopsepsMD.py`. It comes pre-installed on most Linux distributions.
+
+---
 
 ## Configuration
-*Example*:
 
-    APPID=294100
-    STEAMCMDFOLDER=C:\Users\Jopseps\Desktop\steamcmd
-    MOVE_AFTER_DOWNLOAD=0
-    MOVE_PATH=C:\Users\Jopseps\Desktop\Mods
+Settings are stored in `config.ini`. You can fill them in before launching, or leave them blank — the app will prompt you to enter them at startup.
 
-| Key                     | Description                                                                                                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **APPID**               | The Steam App ID of the game you want mods for (e.g. RimWorld = `294100`). You can find it in the game’s Steam store URL: `https://store.steampowered.com/app/294100/` → `294100` |
-| **STEAMCMDFOLDER**      | The folder where you installed **SteamCMD** (`steamcmd.exe` should be inside this folder).                                                                                        |
-| **MOVE_AFTER_DOWNLOAD** | Set to `1` if you want the downloader to automatically move mods to another folder after downloading. Set to `0` to keep them where SteamCMD saves them.                          |
-| **MOVE_PATH**           | The folder where mods should be moved (only used if `MOVE_AFTER_DOWNLOAD=1`). Example: `C:\Games\RimWorld\Mods`                                                                   |
+```ini
+APPID=294100
+STEAMCMDFOLDER=C:\Users\YourName\Desktop\steamcmd
+MOVE_AFTER_DOWNLOAD=0
+MOVE_PATH=C:\Users\YourName\Desktop\Mods
+```
 
+| Key | Description |
+| --- | --- |
+| **APPID** | Steam App ID of the game you want mods for. Find it in the store URL: `store.steampowered.com/app/`**294100**`/RimWorld/`. RimWorld's ID is `294100`. |
+| **STEAMCMDFOLDER** | Path to the folder where you installed SteamCMD (`steamcmd.exe` or `steamcmd` must be inside). |
+| **MOVE_AFTER_DOWNLOAD** | `1` = automatically move downloaded mods to `MOVE_PATH` after downloading. `0` = leave them where SteamCMD saves them. |
+| **MOVE_PATH** | Destination folder for mods when `MOVE_AFTER_DOWNLOAD=1`. Example: `C:\Games\RimWorld\Mods` or `/home/user/Games/RimWorld/Mods`. |
 
-## How to use it
+> **Tip:** If any required setting is missing or invalid, the app will ask you to enter it when it starts. You'll also be offered the option to save it to `config.ini` for future runs.
 
+---
 
+## How to Use
 
-**0.** Adjust the config.ini file to your needs, you must have to change the paths in the config and the game id if needed, the default config is for Rimworld
+**1. Launch the app**
 
-**1.** First open **JopsepsMD.bat** to run it.
+- Windows: double-click `JopsepsMD.bat`
+- Linux: run `python3 JopsepsMD.py` in a terminal
 
-**2.** Enter the desired **Steam Workshop id** of the mod/item you want *( You can find it on the **mod's Steam page link** such as 3530446424 from `https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424&searchtext=` after the `?id=` part. )* then press **"Enter/Return"**.
+**2. Enter mod IDs**
 
+You can enter either a raw Workshop ID or a full Steam Workshop URL — both work:
 
-**3.** After entering **single or multiple mod id's** press **"Q"** to finish the entry process and download the files.
+```
+Enter Workshop ID or URL (q to quit): 3530446424
+Enter Workshop ID or URL (q to quit): https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424
+```
 
-**4.** Right after downloading, **you will be informed where your files are located**, you can move the mods manually or configure the auto move after download in `config.ini` file.
+You can add as many mods as you like, one per line.
 
+**3. Start the download**
 
-# Changelog
+Press `Q` and Enter when you're done adding mods. SteamCMD will download all queued mods.
 
-### Version 1.0 (2025-10-8)
-- Release
+**4. Find your mods**
+
+After downloading, the app tells you exactly where the files are. If `MOVE_AFTER_DOWNLOAD=1`, mods are automatically moved to your `MOVE_PATH`.
+
+---
+
+## Finding a Mod's Workshop ID
+
+Open the mod's Steam Workshop page. The ID is the number in the URL after `?id=`:
+
+```
+https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424
+                                                        ^^^^^^^^^^
+                                                        This is the ID
+```
+
+---
+
+## Finding a Game's App ID
+
+Open the game's Steam store page. The ID is the number in the URL after `/app/`:
+
+```
+https://store.steampowered.com/app/294100/RimWorld/
+                                   ^^^^^^
+                                   This is the App ID
+```
+
+---
+
+## Changelog
+
+### Version 1.1 (2026-02-24)
+- Added smart config validation at launch — missing or invalid settings are prompted interactively instead of failing silently
+- Added save-to-config option — entered values can be saved to `config.ini` for future sessions
+- Full URL pasting support (the `&` character in URLs no longer causes issues on Windows)
+- Both `.bat` and `.py` now have the same features
+
+### Version 1.0 (2025-10-08)
+- Initial release
