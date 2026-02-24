@@ -23,7 +23,7 @@ Visit the [SteamCMD wiki](https://developer.valvesoftware.com/wiki/SteamCMD#Linu
 Python 3 is required to run `JopsepsMD.py`. It comes pre-installed on most Linux distributions.
 
 ---
-=======
+
 **0.** Download **SteamCMD** from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
 
 **1.** Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
