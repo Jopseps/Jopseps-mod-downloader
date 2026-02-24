@@ -2,7 +2,6 @@
 
 A lightweight mod downloader for any Steam game. Uses SteamCMD and downloads directly from the Steam Workshop server.
 
-<<<<<<< HEAD
 - **Windows** → `JopsepsMD.bat`
 - **Linux** → `JopsepsMD.py`
 
@@ -28,7 +27,6 @@ Python 3 is required to run `JopsepsMD.py`. It comes pre-installed on most Linux
 **0.** Download **SteamCMD** from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
 
 **1.** Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
->>>>>>> origin
 
 ## Configuration
 
@@ -75,7 +73,6 @@ You can add as many mods as you like, one per line.
 
 Press `Q` when you're done adding mods. SteamCMD will download all queued mods.
 
-<<<<<<< HEAD
 > **Note:** If you haven't queued any mods yet, pressing `Q` will exit the app immediately instead.
 
 **4. Find your mods**
@@ -126,4 +123,3 @@ https://store.steampowered.com/app/294100/RimWorld/
 =======
 ### Version 1 (2025-10-8)
 - Release
->>>>>>> origin
