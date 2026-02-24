@@ -4,6 +4,56 @@ import re
 import shutil
 import tempfile
 import subprocess
+import termios
+import tty
+
+def readline_with_instant_quit(prompt):
+    """Read a line of input. Pressing 'q' as the first key quits the program instantly."""
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+
+    fd = sys.stdin.fileno()
+
+    # Fallback if stdin is not a TTY (e.g. piped input)
+    if not os.isatty(fd):
+        line = sys.stdin.readline().rstrip('\n')
+        if line.lower() == 'q':
+            sys.exit(0)
+        return line
+
+    old_settings = termios.tcgetattr(fd)
+    chars = []
+
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in ('\r', '\n'):
+                sys.stdout.write('\r\n')
+                sys.stdout.flush()
+                break
+            elif ch in ('\x7f', '\x08'):  # Backspace
+                if chars:
+                    chars.pop()
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            elif ch == '\x03':  # Ctrl+C
+                sys.stdout.write('\r\n')
+                sys.stdout.flush()
+                raise KeyboardInterrupt
+            else:
+                if not chars and ch.lower() == 'q':
+                    sys.stdout.write('q\r\n')
+                    sys.stdout.flush()
+                    return 'q'
+                chars.append(ch)
+                sys.stdout.write(ch)
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    return ''.join(chars)
+
 
 def load_config(config_path):
     if not os.path.exists(config_path):
@@ -142,24 +192,19 @@ def main():
         print()
 
         ids_to_download = set()
-        first_input = True
 
         # === INPUT LOOP ===
         while True:
-            raw_input = input("Enter Workshop ID or URL (q to quit): ").strip()
+            raw_input = readline_with_instant_quit("Enter Workshop ID or URL (q to quit/start download): ").strip()
 
             if raw_input.lower() == 'q':
-                if first_input:
-                    print("Exiting program...")
-                    sys.exit(0)
-                else:
-                    # Break out of input loop to process the queue
-                    break
+                if ids_to_download:
+                    break  # Start download
+                print("Exiting program...")
+                sys.exit(0)
 
             if not raw_input:
                 continue
-
-            first_input = False
 
             # Extract numeric ID
             mod_id = extract_mod_id(raw_input)

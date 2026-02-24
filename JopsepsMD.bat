@@ -122,23 +122,22 @@ echo login anonymous > "%SCRIPT%"
 if exist "%IDLIST%" del "%IDLIST%" >nul
 type nul > "%IDLIST%"
 
-set "firstInput=1"
+set "IDS_QUEUED=0"
 
 :loop
 
-:: === Get input ===
+:: === Get input (q quits or starts download instantly, no Enter needed) ===
 set "RAWINPUT="
-for /f "usebackq delims=" %%R in (`powershell -NoProfile -Command "Read-Host 'Enter Workshop ID or URL (q to quit)'"`) do set "RAWINPUT=%%R"
+for /f "usebackq delims=" %%R in (`powershell -NoProfile -Command "$Host.UI.Write('Enter Workshop ID or URL (q to quit/start download): '); $l=''; while($true){ $k=[Console]::ReadKey($true); if($k.Key -eq [ConsoleKey]::Enter){$Host.UI.WriteLine('');break} elseif($k.Key -eq [ConsoleKey]::Backspace){if($l.Length -gt 0){$l=$l.Substring(0,$l.Length-1);$Host.UI.Write([string][char]8+' '+[string][char]8)}} elseif($l.Length -eq 0 -and $k.KeyChar -eq 'q'){$Host.UI.WriteLine('q');$l='q';break} else{$l+=$k.KeyChar;$Host.UI.Write([string]$k.KeyChar)}}; $l"`) do set "RAWINPUT=%%R"
 if /i "!RAWINPUT!"=="q" (
-    if "!firstInput!"=="1" (
+    if "!IDS_QUEUED!"=="1" (
+        goto run
+    ) else (
         echo Exiting program...
         exit /b
-    ) else (
-        goto run
     )
 )
 if "!RAWINPUT!"=="" goto loop
-set "firstInput=0"
 
 :: === Extract numeric ID ===
 :: Try to extract id= parameter from URL
@@ -167,6 +166,7 @@ if errorlevel 1 (
     echo !ID!>>"%IDLIST%"
     echo workshop_download_item %APPID% !ID! validate >> "%SCRIPT%"
     echo [ADDED] !ID!
+    set "IDS_QUEUED=1"
 ) else (
     echo [INFO] ID !ID! already queued.
 )
