@@ -125,8 +125,10 @@ type nul > "%IDLIST%"
 set "firstInput=1"
 
 :loop
+
+:: === Get input ===
 set "RAWINPUT="
-set /p "RAWINPUT=Enter Workshop ID or URL (q to quit): "
+for /f "usebackq delims=" %%R in (`powershell -NoProfile -Command "Read-Host 'Enter Workshop ID or URL (q to quit)'"`) do set "RAWINPUT=%%R"
 if /i "!RAWINPUT!"=="q" (
     if "!firstInput!"=="1" (
         echo Exiting program...
