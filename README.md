@@ -120,6 +120,3 @@ https://store.steampowered.com/app/294100/RimWorld/
 
 ### Special Thanks to
 - [Swjeer](https://github.com/Swjeer) for testing the Windows version.
-=======
-### Version 1 (2025-10-8)
-- Release
