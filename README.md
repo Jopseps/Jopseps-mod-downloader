@@ -111,3 +111,8 @@ https://store.steampowered.com/app/294100/RimWorld/
 
 ### Version 1.0 (2025-10-08)
 - Initial release
+
+---
+
+### Special Thanks to
+- [Swjeer](https://github.com/Swjeer) for testing the Windows version.
