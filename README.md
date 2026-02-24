@@ -41,5 +41,5 @@ is a basic mod downloader for any Steam game that uses terminal / cmd to downloa
 
 # Changelog
 
-### Version 1 (2025-10-8)
+### Version 1.0 (2025-10-8)
 - Release
