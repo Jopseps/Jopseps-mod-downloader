@@ -105,6 +105,15 @@ https://store.steampowered.com/app/294100/RimWorld/
 
 ---
 
+## Confirmed Steam Workshops That Downloadable
+**NOTE:** Theoretically, it can download from any workshop. However, for games that have separate workshop IDs for singleplayer and multiplayer (or use a dedicated server, like Stonehearth), it might not be able to download from them.
+
+- **RimWorld**  `294100`
+- **Project Zomboid** `108600`
+- **Half Life 2** `220`
+
+---
+
 ## Changelog
 
 ### Version 1.1 (2026-02-24)
