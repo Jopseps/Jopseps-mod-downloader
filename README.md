@@ -76,7 +76,7 @@ SteamCMD downloads into the app's own cache (`~/.local/share/jmod/cache` on Linu
 
 ## Adding support for a game
 
-Most games work as-is. For games with their own mod list format, add a small handler in `jmd/handlers/`: see [ARCHITECTURE.md](ARCHITECTURE.md#handlers). RimWorld's handler is the example.
+Most games work as-is. For games with their own mod list format, add a small handler in `jmd/handlers/` by subclassing `jmd.handlers.base.GameHandler` (for frozen builds, also add the module to `hiddenimports` in `jmd.spec`). RimWorld's handler is the example.
 
 ## Building
 

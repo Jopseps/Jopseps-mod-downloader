@@ -6,3 +6,5 @@ dist/
 .venv/
 *.zip
 design/
+ARCHITECTURE.md
+CLAUDE_DESIGN_PROMPT.md
