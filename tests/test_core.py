@@ -134,6 +134,38 @@ class RequiredItemsTest(unittest.TestCase):
         self.assertEqual(steam_api.parse_required_items(page), [("3014915404", "Vehicle Framework"), ("2009463077", "Harmony & Co")])
 
 
+class RimWorldTest(unittest.TestCase):
+    def test_rml_and_modsconfig(self):
+        from jmd.handlers import rimworld
+        with tempfile.TemporaryDirectory() as t:
+            rml = os.path.join(t, "list.rml")
+            with open(rml, "w") as f:
+                f.write("<savegame><modList><ids><li>brrainz.harmony</li></ids>"
+                        "<modSteamIds><li>2009463077</li><li>0</li><li>2009463077</li></modSteamIds></modList></savegame>")
+            h = rimworld.RimWorldHandler()
+            self.assertEqual(h.import_list(rml), ["2009463077"])
+            mods = os.path.join(t, "Mods")
+            for folder, pid, wid in (("harmony", "brrainz.harmony", "2009463077"), ("3014915404", "SmashPhil.VehicleFramework", None)):
+                os.makedirs(os.path.join(mods, folder, "About"))
+                with open(os.path.join(mods, folder, "About", "About.xml"), "w") as f:
+                    f.write(f"<ModMetaData><packageId>{pid}</packageId></ModMetaData>")
+                if wid:
+                    with open(os.path.join(mods, folder, "About", "PublishedFileId.txt"), "w") as f:
+                        f.write(wid)
+            self.assertEqual(rimworld.package_map([mods]),
+                             {"brrainz.harmony": "2009463077", "smashphil.vehicleframework": "3014915404"})
+            cfg = os.path.join(t, "ModsConfig.xml")
+            with open(cfg, "w") as f:
+                f.write("<ModsConfigData><activeMods><li>ludeon.rimworld</li><li>brrainz.harmony</li>"
+                        "<li>smashphil.vehicleframework</li></activeMods></ModsConfigData>")
+            orig = rimworld.mod_roots
+            rimworld.mod_roots = lambda: [mods]
+            try:
+                self.assertEqual(h.import_list(cfg), ["2009463077", "3014915404"])
+            finally:
+                rimworld.mod_roots = orig
+
+
 class StoreTest(unittest.TestCase):
     def test_roundtrip(self):
         with tempfile.TemporaryDirectory() as t:
