@@ -384,7 +384,7 @@ class LeftPanel(QFrame):
         n = len([i for i in q.pending() if i.status != models.LOGIN])
         self.dl_btn.setText(f"Download ({n})" if n else "Download")
         self.dl_btn.setEnabled(n > 0 and run is None)
-        failed = sum(1 for i in q.items() if i.status == models.FAILED and i.checked)
+        failed = sum(1 for i in q.items() if i.status == models.FAILED and i.checked and not i.blocked)
         login = q.count(models.LOGIN)
         done = q.count(models.DONE)
         self.failed_lbl.setText(f"{failed} failed")

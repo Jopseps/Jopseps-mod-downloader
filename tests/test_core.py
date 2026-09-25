@@ -40,6 +40,14 @@ class QueueTest(unittest.TestCase):
         q2.remove_id("9")
         self.assertEqual([i.id for i in q2.items()], ["1"])
 
+    def test_blocked_not_pending(self):
+        q = models.QueueState()
+        a = q.add_item("1")
+        a.status = models.QUEUED
+        b = q.add_item("2")
+        b.status, b.blocked = models.FAILED, True
+        self.assertEqual([i.id for i in q.pending()], ["1"])
+
     def test_skipped(self):
         item = models.ModItem(id="1", status=models.QUEUED, checked=False)
         self.assertEqual(item.display_status, models.SKIPPED)

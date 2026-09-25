@@ -169,7 +169,7 @@ class AppController(QObject):
                     continue
                 d = info.get(mod_id)
                 if not d or not d["ok"]:
-                    item.status, item.error = models.FAILED, "Not found"
+                    item.status, item.error, item.blocked = models.FAILED, "Not found", True
                     item.title = item.title or mod_id
                 else:
                     item.title = d["title"] or item.title
@@ -179,6 +179,7 @@ class AppController(QObject):
                     item.app_id = d["app_id"]
                     if d["app_id"] and app_id and d["app_id"] != app_id:
                         item.status, item.error = models.FAILED, f"Other game (AppID {d['app_id']})"
+                        item.blocked = True
                     else:
                         item.status = models.QUEUED
                         added.append(item)
@@ -360,7 +361,7 @@ class AppController(QObject):
         threading.Thread(target=dl.run, daemon=True, name="steamcmd").start()
 
     def retry_failed(self):
-        items = [i for i in self.queue.items() if i.status == models.FAILED and i.checked]
+        items = [i for i in self.queue.items() if i.status == models.FAILED and i.checked and not i.blocked]
         self.download(items)
 
     def retry_item(self, item):

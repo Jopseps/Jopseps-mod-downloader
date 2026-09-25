@@ -141,7 +141,7 @@ class QueueDelegate(_Base):
         L["remove"] = QRect(right - 22, cy - 11, 22, 22)
         right -= 22 + 10
         st = node.status
-        if st == models.FAILED:
+        if st == models.FAILED and not node.blocked:
             L["retry"] = QRect(right - 26, cy - 13, 26, 26)
             right -= 26 + 10
         elif st == models.LOGIN:

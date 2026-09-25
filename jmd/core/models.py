@@ -32,6 +32,7 @@ class ModItem:
     attempt: int = 0
     error: str = ""
     progress: float = 0.0
+    blocked: bool = False  # permanent failure (removed / other game): never downloadable
 
     @property
     def display_status(self):
@@ -223,7 +224,8 @@ class QueueState:
     # === COUNTS ===
     def pending(self):
         """Items the Download button would fetch."""
-        return [i for i in self.items() if i.checked and i.status in (QUEUED, FAILED, RETRYING, LOGIN)]
+        return [i for i in self.items()
+                if i.checked and not i.blocked and i.status in (QUEUED, FAILED, RETRYING, LOGIN)]
 
     def count(self, status):
         return sum(1 for i in self.items() if i.status == status)
