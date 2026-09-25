@@ -1,26 +1,10 @@
-# Jopseps Mod Downloader
+# J Mod Downloader
 
-A lightweight mod downloader for any Steam game. Uses SteamCMD and downloads directly from the Steam Workshop server.
+Download Steam Workshop mods for any game, without subscribing in Steam. Browse the Workshop inside the app, click **+ Add** on mods or whole collections, then download everything in one batch with SteamCMD.
 
-- **Windows** → `JopsepsMD.bat`
-- **Linux** → `JopsepsMD.py`
+Works on **Windows** and **Linux**.
 
----
-
-## Requirements
-
-### SteamCMD
-Download and set up SteamCMD before using Mod Downloader.
-
-#### Windows
-1. Download: https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip
-2. Extract the zip and run `steamcmd.exe` once - it will finish setting itself up, then you can close it.
-
-#### Linux
-Visit the [SteamCMD wiki](https://developer.valvesoftware.com/wiki/SteamCMD#Linux) for installation instructions for your distro (Ubuntu, Debian, Arch, Gentoo, etc.).
-
-### Python (Linux only)
-Python 3 is required to run `JopsepsMD.py`. It comes pre-installed on most Linux distributions.
+![J Mod Downloader](images/screenshot.png)
 
 ---
 
@@ -39,69 +23,70 @@ MOVE_AFTER_DOWNLOAD=0
 MOVE_PATH=C:\Users\YourName\Desktop\Mods
 ```
 
-| Key | Description |
-| --- | --- |
-| **APPID** | Steam App ID of the game you want mods for. Find it in the store URL: `store.steampowered.com/app/`**294100**`/RimWorld/`. RimWorld's ID is `294100`. |
-| **STEAMCMDFOLDER** | Path to the folder where you installed SteamCMD (`steamcmd.exe` or `steamcmd` must be inside). |
-| **MOVE_AFTER_DOWNLOAD** | `1` = automatically move downloaded mods to `MOVE_PATH` after downloading. `0` = leave them where SteamCMD saves them. |
-| **MOVE_PATH** | Destination folder for mods when `MOVE_AFTER_DOWNLOAD=1`. Example: `C:\Games\RimWorld\Mods` or `/home/user/Games/RimWorld/Mods`. |
+## Features
 
-> **Tip:** If any required setting is missing or invalid, the app will ask you to enter it when it starts. You'll also be offered the option to save it to `config.ini` for future runs.
-
----
-
-## How to Use
-
-**1. Launch the app**
-
-- Windows: double-click `JopsepsMD.bat`
-- Linux: run `python3 JopsepsMD.py` in a terminal
-
-**2. Enter mod IDs**
-
-You can enter either a raw Workshop ID or a full Steam Workshop URL — both work:
-
-```
-Enter Workshop ID or URL (q to quit/start download): 3530446424
-Enter Workshop ID or URL (q to quit/start download): https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424
-Enter Workshop ID or URL (q to quit/start download): https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424&searchtext=Trains
-```
-
-You can add as many mods as you like, one per line.
-
-**3. Start the download**
-
-Press `Q` when you're done adding mods. SteamCMD will download all queued mods.
-
-> **Note:** If you haven't queued any mods yet, pressing `Q` will exit the app immediately instead.
-
-**4. Find your mods**
-
-After downloading, the app tells you exactly where the files are. If `MOVE_AFTER_DOWNLOAD=1`, mods are automatically moved to your `MOVE_PATH`.
+- **Built-in Workshop browser**: every mod tile, mod page and collection gets a **+ Add** button. Click it again (**✓ In list**) to remove.
+- **Collections in one click**: a collection lands in your queue as a group. Untick anything you don't want.
+- **Dependencies are added for you**: a mod's *Required items* are queued automatically and shown under it.
+- **Batch download** with SteamCMD, with automatic retries for timeouts.
+- **Update tracking**: the *Installed* tab shows which mods have updates. *Update all* only re-downloads what changed.
+- **Mod lists**: save named lists, import lists (`.txt`, plus RimWorld `.rml`, saves and `ModsConfig.xml`), export to `.txt`.
+- **Per-game profiles**: each game has its own mod folder, queue and lists. Find games by name, AppID, or from the ones installed on your PC.
+- **Copy or link**: mods are copied into your game's mod folder, or linked (symlink / junction) to save disk space.
+- **No setup hunt**: SteamCMD is found automatically, or installed for you on first run.
 
 ---
 
-## Finding a Mod's Workshop ID
+## Download
 
-Open the mod's Steam Workshop page. The ID is the number in the URL after `?id=`:
+Grab the latest build from [Releases](https://github.com/Jopseps/Jopseps-mod-downloader/releases):
 
-```
-https://steamcommunity.com/sharedfiles/filedetails/?id=3530446424
-                                                        ^^^^^^^^^^
-                                                      This is the ID
+- **Windows**: `JModDownloader-Windows.zip`. Extract it, run `JModDownloader.exe`.
+- **Linux**: `JModDownloader-Linux.tar.gz`. Extract it, run `JModDownloader/JModDownloader`.
+
+### Run from source
+
+Needs Python 3.11+.
+
+```bash
+pip install -r requirements.txt
+python -m jmd
 ```
 
 ---
 
-## Finding a Game's App ID
+## How to use
 
-Open the game's Steam store page. The ID is the number in the URL after `/app/`:
+1. **First run**: the setup finds SteamCMD (or downloads it), then asks which game you mod and where its mod folder is.
+2. **Add mods**: browse the Workshop on the right and click **+ Add**. You can also paste Workshop IDs or links into the box on the left (many at once is fine).
+3. **Download**: press **Download** at the bottom left. Progress shows on each row, and the SteamCMD log is at the bottom.
+4. **Keep them fresh**: open the **Installed** tab, press **Check updates**, then **Update all**.
 
+### Games that need you to own them
+
+Most games let SteamCMD download Workshop items anonymously. Some (Wallpaper Engine, for example) only allow accounts that own the game. Those rows show **Needs login**: click **Log in**, enter your Steam account and your Steam Guard code if asked.
+
+Your password is handed to SteamCMD for that one run and never saved. SteamCMD remembers the session afterwards.
+
+### Where files go
+
+SteamCMD downloads into the app's own cache (`~/.local/share/jmod/cache` on Linux, `%LOCALAPPDATA%\jmod\cache` on Windows), and mods are then copied or linked into the mod folder of your profile, one folder per Workshop ID. Keeping the cache means updates only fetch what changed.
+
+---
+
+## Adding support for a game
+
+Most games work as-is. For games with their own mod list format, add a small handler in `jmd/handlers/`: see [ARCHITECTURE.md](ARCHITECTURE.md#handlers). RimWorld's handler is the example.
+
+## Building
+
+```bash
+pip install -r requirements.txt pyinstaller
+pyinstaller jmd.spec          # → dist/JModDownloader/
+python -m unittest tests.test_core
 ```
-https://store.steampowered.com/app/294100/RimWorld/
-                                   ^^^^^^
-                              This is the App ID
-```
+
+Tagging `v*` builds Windows and Linux releases through GitHub Actions.
 
 ---
 
@@ -115,6 +100,14 @@ https://store.steampowered.com/app/294100/RimWorld/
 ---
 
 ## Changelog
+
+### Version 2.0 (unreleased)
+- New desktop app (PySide6) replaces the terminal scripts.
+- Embedded Workshop browser with **+ Add** buttons on mods and collections.
+- Collections, automatic dependencies, named lists, import/export.
+- Update tracking and *Update all*.
+- Per-game profiles, game search and installed-game detection.
+- SteamCMD auto-install, retries, login fallback for ownership-gated games.
 
 ### Version 1.1 (2026-02-24)
 - Added smart config validation.
