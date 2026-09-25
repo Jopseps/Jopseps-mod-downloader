@@ -14,7 +14,8 @@ from jmd.ui.widgets import icon_button, label
 try:
     if os.environ.get("JMD_NO_WEB"):
         raise ImportError("disabled by JMD_NO_WEB")
-    from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
+    from PySide6.QtWebChannel import QWebChannel
+    from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineScript
     from PySide6.QtWebEngineWidgets import QWebEngineView
     HAVE_WEB = True
 except ImportError:
@@ -95,6 +96,7 @@ class BrowserPane(QFrame):
             self.view = QWebEngineView()
             self.view.setPage(QWebEnginePage(profile, self.view))
             self.view.page().setBackgroundColor(QColor(C["panel"]))
+            self._install_injector(self.view.page())
             self.view.urlChanged.connect(self._url_changed)
             self.view.loadProgress.connect(self.load_bar.set_pct)
             self.view.loadFinished.connect(lambda _: self.load_bar.set_pct(100))
@@ -119,6 +121,21 @@ class BrowserPane(QFrame):
         self.home.clicked.connect(self.go_home)
         controller.profileChanged.connect(self.go_home)
         QTimer.singleShot(0, self.go_home)
+
+    def _install_injector(self, page):
+        """'+ Add' pills: qwebchannel.js + inject.js in an isolated world, bridged to the controller."""
+        from jmd.ui.web_bridge import WorkshopBridge, script_source
+        self.bridge = WorkshopBridge(self.ctl, self)
+        channel = QWebChannel(page)
+        channel.registerObject("jmd", self.bridge)
+        page.setWebChannel(channel, QWebEngineScript.ApplicationWorld)
+        script = QWebEngineScript()
+        script.setName("jmd-inject")
+        script.setSourceCode(script_source())
+        script.setInjectionPoint(QWebEngineScript.DocumentReady)
+        script.setWorldId(QWebEngineScript.ApplicationWorld)
+        script.setRunsOnSubFrames(False)
+        page.scripts().insert(script)
 
     def go_home(self):
         p = self.ctl.profile
