@@ -88,6 +88,24 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(s, 'force_install_dir "/cache"\nlogin anonymous\nworkshop_download_item 294100 1\nworkshop_download_item 294100 2\nquit\n')
 
 
+class ClassifyTest(unittest.TestCase):
+    def dl(self, retries=3, username=""):
+        from jmd.core.downloader import Downloader
+        return Downloader("steamcmd", "/c", 294100, [], lambda *a: None, retries=retries, username=username)
+
+    def test_anonymous_failure_retries_then_login(self):
+        d = self.dl()
+        self.assertEqual(d._classify("Failure", True, 1)[0], "retry")
+        self.assertEqual(d._classify("Failure", True, 2)[0], "login")
+        self.assertEqual(self.dl(retries=1)._classify("Failure", True, 1)[0], "login")
+
+    def test_other_reasons(self):
+        d = self.dl()
+        self.assertEqual(d._classify("File Not Found", True, 1)[0], "failed")
+        self.assertEqual(d._classify("Timeout", True, 1)[0], "retry")
+        self.assertEqual(d._classify("Failure", False, 1)[0], "retry")
+
+
 class SyncTest(unittest.TestCase):
     def test_mirror_and_link(self):
         with tempfile.TemporaryDirectory() as t:

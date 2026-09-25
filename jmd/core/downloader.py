@@ -158,13 +158,15 @@ class Downloader:
         self.on_event("status", mod_id, models.DONE, info)
         return "done", info
 
-    @staticmethod
-    def _classify(reason, anonymous, attempt):
+    def _classify(self, reason, anonymous, attempt):
         info = {"error": reason, "attempt": attempt}
         if reason == steamcmd.REASON_NOT_FOUND:
             return "failed", info
         if reason == steamcmd.REASON_FAILURE and anonymous:
-            return "login", info
+            # ownership-gated games answer "Failure"; retry once so a transient one doesn't ask for login
+            if attempt >= 2 or self.retries == 1:
+                return "login", info
+            return "retry", info
         if reason in steamcmd.RETRYABLE or reason == steamcmd.REASON_FAILURE:
             return "retry", info
         return "failed", info

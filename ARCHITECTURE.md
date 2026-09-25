@@ -59,7 +59,7 @@ thumbs/  web/  web-cache/     thumbnails, embedded browser profile
    - `ERROR! Download item <id> failed (<reason>)`:
      - `Timeout` and other transient reasons → retried in a fresh pass, up to *Retries*.
      - `File Not Found` → **failed**.
-     - `Failure` while anonymous → **needs login** (ownership-gated games answer this within a second).
+     - `Failure` while anonymous → retried once, then **needs login** (ownership-gated games answer this within a second).
 5. Progress: SteamCMD prints no percentage, so the size of `downloads/<app>/<id>` is polled against the API `file_size`.
 6. Cancel kills the whole process group. `steamcmd.sh` forks the real binary, which would otherwise keep the pipe open.
 
