@@ -18,7 +18,7 @@ def _read_json(path, default):
 def _write_json(path, data):
     """Atomic write: temp file + replace, so a crash never leaves half a file."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.tmp"  # per-process, so two open instances don't race on one temp file
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     os.replace(tmp, path)

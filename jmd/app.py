@@ -5,6 +5,12 @@ from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication
 
+if sys.platform.startswith("linux"):
+    # Chromium's Vulkan fallback (used when GBM is unavailable) segfaults inside Mesa on some drivers
+    flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    if "Vulkan" not in flags:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-features=Vulkan").strip()
+
 # QtWebEngine must be imported (and GL contexts shared) before the QApplication exists
 if not os.environ.get("JMD_NO_WEB"):
     try:

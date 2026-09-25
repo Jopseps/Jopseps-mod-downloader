@@ -1,5 +1,6 @@
 # PyInstaller spec for J Mod Downloader. Build: pyinstaller jmd.spec  → dist/JModDownloader/
 # One-folder build on purpose: QtWebEngine ships a helper process + resources that one-file mode unpacks slowly.
+import os
 import sys
 
 block_cipher = None
@@ -22,6 +23,15 @@ a = Analysis(
               "PySide6.QtMultimedia", "PySide6.QtBluetooth", "PySide6.QtSensors", "PySide6.QtSerialPort"],
     cipher=block_cipher,
 )
+if sys.platform.startswith("linux"):
+    # the user's GPU driver (Mesa) always loads from the system and needs the system's copies of these;
+    # bundling the CI runner's older ones breaks EGL and the window never shows on newer distros
+    SYSTEM_LIBS = ("libstdc++.so", "libgcc_s.so", "libgbm.so", "libdrm", "libEGL", "libGL", "libexpat.so", "libz.so",
+                   "libzstd.so", "libfontconfig.so", "libfreetype.so", "libX11.so", "libX11-xcb.so", "libXau.so",
+                   "libXdmcp.so", "libxcb-glx.so", "libxcb-randr.so", "libxcb-shm.so", "libxcb-sync.so",
+                   "libxcb-xfixes.so", "libxcb-dri", "libxcb-present.so")
+    a.binaries = [b for b in a.binaries if not os.path.basename(b[0]).startswith(SYSTEM_LIBS)]
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
