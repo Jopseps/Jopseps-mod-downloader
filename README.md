@@ -8,6 +8,21 @@ Works on **Windows** and **Linux**.
 
 ---
 
+**0.** Download **SteamCMD** from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
+
+**1.** Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
+
+## Configuration
+
+Settings are stored in `config.ini`. You can fill them in before launching, or leave them blank — the app will prompt you to enter them at startup.
+
+```ini
+APPID=294100
+STEAMCMDFOLDER=C:\Users\YourName\Desktop\steamcmd
+MOVE_AFTER_DOWNLOAD=0
+MOVE_PATH=C:\Users\YourName\Desktop\Mods
+```
+
 ## Features
 
 - **Built-in Workshop browser**: every mod tile, mod page and collection gets a **+ Add** button. Click it again (**✓ In list**) to remove.
@@ -72,6 +87,15 @@ python -m unittest tests.test_core
 ```
 
 Tagging `v*` builds Windows and Linux releases through GitHub Actions.
+
+---
+
+## Confirmed Steam Workshops That Downloadable
+**NOTE:** Theoretically, it can download from any workshop. However, for games that have separate workshop IDs for singleplayer and multiplayer (or use a dedicated server, like Stonehearth), it might not be able to download from them.
+
+- **RimWorld**  `294100`
+- **Project Zomboid** `108600`
+- **Half Life 2** `220`
 
 ---
 
