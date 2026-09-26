@@ -6,10 +6,11 @@ from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication
 
 if sys.platform.startswith("linux"):
-    # Chromium's Vulkan fallback (used when GBM is unavailable) segfaults inside Mesa on some drivers
+    # when Qt decides GBM is unsupported, Chromium hands frames over through Vulkan, which segfaults inside Mesa
+    # on some drivers; software compositing skips both paths and still rasterizes on the GPU
     flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
-    if "Vulkan" not in flags:
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-features=Vulkan").strip()
+    if "--disable-gpu" not in flags:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-gpu-compositing").strip()
 
 # QtWebEngine must be imported (and GL contexts shared) before the QApplication exists
 if not os.environ.get("JMD_NO_WEB"):
