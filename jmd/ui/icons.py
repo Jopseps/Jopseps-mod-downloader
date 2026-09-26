@@ -1,3 +1,6 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Icon paths derived from Lucide (ISC) and Feather (MIT), see jmd/assets/LICENSE-Lucide.txt
 """Lucide-style line icons (paths copied from the design), tinted at runtime."""
 from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap

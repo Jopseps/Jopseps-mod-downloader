@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from jmd.ui.dialogs.common import GamePicker
 from jmd.ui.widgets import Dialog, button
 

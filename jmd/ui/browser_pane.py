@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Right side: nav bar + embedded Steam Workshop. Injected '+ Add' buttons arrive in milestone 3."""
 import os
 

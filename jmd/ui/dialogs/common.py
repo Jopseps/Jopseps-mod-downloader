@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Pieces shared by the profile dialog and onboarding: radio-style option cards and the game picker."""
 import os
 
@@ -8,7 +10,7 @@ from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QFrame, QHBoxLayout, Q
 
 from jmd import handlers
 from jmd.core import library, steam_api
-from jmd.core.ids import extract_app_id
+from jmd.core.ids import parse_game_ref
 from jmd.ui import icons
 from jmd.ui.async_task import run_async
 from jmd.ui.tokens import C, STATUS
@@ -154,12 +156,16 @@ class GamePicker(QWidget):
         self.no_results = label("No games match. Try an AppID below.", "dim")
         self.no_results.hide()
         ll.addWidget(self.no_results)
-        ll.addWidget(caps_label("AppID or store URL"))
+        ll.addWidget(caps_label("AppID or link"))
         self.appid_in = QLineEdit()
         self.appid_in.setProperty("mono", "true")
-        self.appid_in.setPlaceholderText("294100 or store.steampowered.com/app/…")
+        self.appid_in.setPlaceholderText("294100, store or Workshop link")
         self.appid_in.textChanged.connect(lambda _: self._appid_timer.start())
+        self.appid_in.returnPressed.connect(self._do_appid)
         ll.addWidget(self.appid_in)
+        self.appid_status = label("", "faint", wrap=True)
+        self.appid_status.hide()
+        ll.addWidget(self.appid_status)
         root.addWidget(left)
         self.group = QButtonGroup(self)
         self.group.setExclusive(True)
@@ -258,7 +264,7 @@ class GamePicker(QWidget):
                 w.deleteLater()
         for g in games:
             b = GameButton(g, self.thumbs)
-            b.clicked.connect(lambda _, game=g: self.select(game))
+            b.clicked.connect(lambda _, game=g: self._pick_listed(game))
             if self.selected and self.selected["app_id"] == g["app_id"]:
                 b.setChecked(True)
             self.group.addButton(b)
@@ -280,12 +286,51 @@ class GamePicker(QWidget):
                   lambda e: self._set_games([], "Results"))
 
     def _do_appid(self):
-        app_id = extract_app_id(self.appid_in.text())
-        if not app_id:
+        self._appid_timer.stop()
+        text = self.appid_in.text()
+        ref = parse_game_ref(text)
+        if not text.strip():
+            self._appid_note("")
             return
-        run_async(lambda: steam_api.get_app(app_id),
-                  lambda info: self.select(info or {"app_id": int(app_id), "name": f"App {app_id}",
-                                                    "image": steam_api.capsule_url(app_id)}))
+        if not ref:
+            self._appid_note("Paste an AppID, a store link or a Workshop link.", "warn")
+            return
+        self._appid_note("Looking up…")
+        run_async(lambda: self._lookup(ref),
+                  lambda res: self._appid_found(text, *res) if self.appid_in.text() == text else None,
+                  lambda e: self._appid_note(f"Lookup failed: {e}", "error") if self.appid_in.text() == text else None)
+
+    @staticmethod
+    def _lookup(ref):
+        """Worker: (app_id, store info or None, came from a Workshop link)."""
+        kind, ref_id = ref
+        if kind == "item":
+            app_id = steam_api.app_of_item(ref_id)
+            if not app_id:
+                raise LookupError("no Workshop item with that ID")
+            return app_id, steam_api.get_app(app_id), True
+        app_id = int(ref_id)
+        info = steam_api.get_app(app_id)
+        if info is None:
+            # a bare number with no store page may be a Workshop item ID instead
+            owner = steam_api.app_of_item(ref_id)
+            if owner:
+                return owner, steam_api.get_app(owner), True
+        return app_id, info, False
+
+    def _appid_found(self, text, app_id, info, from_item):
+        if info and info["name"]:
+            self._appid_note(f"Game of that Workshop item: {info['name']}" if from_item else "")
+            self.select(info)
+        else:
+            self._appid_note(f"No store page found for AppID {app_id}. Check the ID.", "warn")
+            self.select({"app_id": app_id, "name": f"App {app_id}", "image": steam_api.capsule_url(app_id)})
+
+    def _appid_note(self, text, tone=None):
+        color = {"warn": STATUS["outdated"][1], "error": C["danger-text"]}.get(tone, C["text-dim"])
+        self.appid_status.setStyleSheet(f"color:{color};font-size:12px;")
+        self.appid_status.setText(text)
+        self.appid_status.setVisible(bool(text))
 
     def _thumb_ready(self, key):
         for i in range(self.list_lay.count() - 1):
@@ -296,9 +341,18 @@ class GamePicker(QWidget):
             self._load_sel_cap()
 
     # === SELECTION ===
+    def _pick_listed(self, game):
+        self._appid_note("")
+        self.select(game)
+
     def select(self, game):
         self.selected = game
         app_id = game["app_id"]
+        # highlight follows the selection, also when it came from the AppID box
+        self.group.setExclusive(False)
+        for b in self.group.buttons():
+            b.setChecked(b.game["app_id"] == app_id)
+        self.group.setExclusive(True)
         self.handler = handlers.for_app(app_id)
         game_dir = next((g.get("install_dir", "") for g in self.detected if g["app_id"] == app_id), "")
         if not game_dir:

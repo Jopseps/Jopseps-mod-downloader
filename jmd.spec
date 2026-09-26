@@ -1,6 +1,9 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # PyInstaller spec for J Mod Downloader. Build: pyinstaller jmd.spec  → dist/JModDownloader/
 # One-folder build on purpose: QtWebEngine ships a helper process + resources that one-file mode unpacks slowly.
 import os
+import shutil
 import sys
 
 block_cipher = None
@@ -43,3 +46,5 @@ exe = EXE(
     upx=False,
 )
 coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas, upx=False, name="JModDownloader")
+# AGPL: every copy of the program ships with the license, next to the executable
+shutil.copy("LICENSE", os.path.join(DISTPATH, "JModDownloader", "LICENSE"))

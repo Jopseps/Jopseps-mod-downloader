@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """First run: 1 SteamCMD (find / auto-install / missing-libs error) → 2 first profile → 3 ready."""
 import os
 

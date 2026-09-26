@@ -1,9 +1,11 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
-from jmd import paths
+from jmd import AUTHOR, APP_NAME, CONTACT, SOURCE_URL, __version__, paths
 from jmd.core import steamcmd
 from jmd.ui import icons
 from jmd.ui.async_task import run_async
@@ -137,6 +139,21 @@ class SettingsDialog(Dialog):
         row.addWidget(clear)
         b.addLayout(row)
         self._thumb_text()
+
+        # === ABOUT === (AGPL "Appropriate Legal Notices")
+        b.addWidget(Line())
+        link = f"color:{C['steam-blue']};text-decoration:none;"
+        about = QLabel(
+            f'<b style="color:{C["text-strong"]}">{APP_NAME}</b> {__version__} · Copyright (C) 2025-2026 {AUTHOR}<br>'
+            f"This program comes with ABSOLUTELY NO WARRANTY. It is free software: you can redistribute it and/or "
+            f"modify it under the GNU Affero General Public License, version 3 or later.<br>"
+            f'<a style="{link}" href="https://www.gnu.org/licenses/agpl-3.0.html">License</a> · '
+            f'<a style="{link}" href="{SOURCE_URL}">Source code</a> · '
+            f'<a style="{link}" href="mailto:{CONTACT}">{CONTACT}</a>')
+        about.setWordWrap(True)
+        about.setOpenExternalLinks(True)
+        about.setStyleSheet(f"color:{C['text-dim']};font-size:12px;")
+        b.addWidget(about)
 
         self.footer_layout.addStretch(1)
         cancel = button("Cancel")

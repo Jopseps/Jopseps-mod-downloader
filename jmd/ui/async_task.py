@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Run blocking core calls on the thread pool and get results back on the UI thread."""
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 

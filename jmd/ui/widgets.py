@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Small shared widgets: buttons with design variants, labels, spinner, toast, dialog shell."""
 from PySide6.QtCore import QPropertyAnimation, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter, QPen

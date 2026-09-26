@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Flat list models over the queue and the installed records. Rows are painted by delegates.py."""
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
 

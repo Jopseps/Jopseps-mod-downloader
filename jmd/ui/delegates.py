@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Painted queue/installed rows (design: 'Queue row · every status'). One delegate beats one widget per
 row when a 179-item collection lands in the list."""
 import time

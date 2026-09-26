@@ -1,17 +1,19 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import re
 
-_ID_PARAM = re.compile(r"[?&]id=(\d+)")
+_ID_PARAM = re.compile(r"[?&]id=(\d+)|CommunityFilePage/(\d+)")
 _BARE_ID = re.compile(r"^\d{3,}$")
-_APP_URL = re.compile(r"/app/(\d+)")
+_APP_URL = re.compile(r"/app/(\d+)|[?&]appid=(\d+)|steam://(?:store|run|rungameid)/(\d+)")
 _TOKEN_SPLIT = re.compile(r"[\s,;]+")
 
 
 def extract_mod_id(raw):
-    """Workshop ID from a bare number or any steamcommunity URL carrying ?id=."""
+    """Workshop ID from a bare number, any steamcommunity URL carrying ?id=, or a steam:// CommunityFilePage link."""
     raw = (raw or "").strip()
     match = _ID_PARAM.search(raw)
     if match:
-        return match.group(1)
+        return match.group(1) or match.group(2)
     if _BARE_ID.match(raw):
         return raw
     return None
@@ -29,14 +31,18 @@ def extract_ids(text):
     return ids
 
 
-def extract_app_id(raw):
-    """Steam AppID from a bare number or a store URL like store.steampowered.com/app/294100/..."""
+def parse_game_ref(raw):
+    """What a pasted game reference points at: ("app", id) for an AppID, a store/community/Workshop browse link,
+    ("item", id) for a Workshop item or collection link (its game is looked up), None otherwise."""
     raw = (raw or "").strip()
     if raw.isdigit():
-        return raw
+        return ("app", raw)
     match = _APP_URL.search(raw)
     if match:
-        return match.group(1)
+        return ("app", next(g for g in match.groups() if g))
+    match = _ID_PARAM.search(raw)
+    if match:
+        return ("item", match.group(1) or match.group(2))
     return None
 
 

@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Steam login mid-download: credentials → Steam Guard code / mobile approval → success.
 Prompt strings from SteamCMD are unverified without a test account; see core/steamcmd.py PROMPTS."""
 from PySide6.QtCore import Qt, QTimer

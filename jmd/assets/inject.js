@@ -1,3 +1,5 @@
+// Copyright (C) 2025-2026 Yusuf Mert Turan
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // J Mod Downloader: injects "+ Add" / "✓ In list" pills into Steam Workshop pages.
 // Runs in an isolated JS world (the page's own scripts can't reach the bridge).
 // Steam markup changes break things here first: every selector lives in SELECTORS.

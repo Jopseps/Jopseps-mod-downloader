@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Design tokens from the Claude Design system (Design System.dc.html). Single source for QSS and painting."""
 
 C = {

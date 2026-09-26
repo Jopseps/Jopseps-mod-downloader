@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import os
 import tempfile
 import unittest
@@ -17,9 +19,23 @@ class IdsTest(unittest.TestCase):
         text = "2009463077\nhttps://steamcommunity.com/sharedfiles/filedetails/?id=3014915404, 2009463077 junk"
         self.assertEqual(ids.extract_ids(text), ["2009463077", "3014915404"])
 
-    def test_app_id(self):
-        self.assertEqual(ids.extract_app_id("https://store.steampowered.com/app/294100/RimWorld/"), "294100")
-        self.assertEqual(ids.extract_app_id("294100"), "294100")
+    def test_steam_protocol_mod_id(self):
+        self.assertEqual(ids.extract_mod_id("steam://url/CommunityFilePage/818773962"), "818773962")
+        self.assertIsNone(ids.extract_mod_id("https://steamcommunity.com/workshop/browse/?appid=294100"))
+
+    def test_game_ref(self):
+        ref = ids.parse_game_ref
+        self.assertEqual(ref(" 294100 "), ("app", "294100"))
+        self.assertEqual(ref("https://store.steampowered.com/app/294100/RimWorld/"), ("app", "294100"))
+        self.assertEqual(ref("https://store.steampowered.com/agecheck/app/489830/"), ("app", "489830"))
+        self.assertEqual(ref("https://steamcommunity.com/app/294100/workshop/"), ("app", "294100"))
+        self.assertEqual(ref("https://steamcommunity.com/workshop/browse/?appid=294100&browsesort=trend"), ("app", "294100"))
+        self.assertEqual(ref("steam://store/294100"), ("app", "294100"))
+        self.assertEqual(ref("https://steamcommunity.com/sharedfiles/filedetails/?id=818773962"), ("item", "818773962"))
+        self.assertEqual(ref("https://steamcommunity.com/workshop/filedetails/?l=en&id=2009463077"), ("item", "2009463077"))
+        self.assertEqual(ref("steam://url/CommunityFilePage/818773962"), ("item", "818773962"))
+        self.assertIsNone(ref("RimWorld"))
+        self.assertIsNone(ref(""))
 
 
 class QueueTest(unittest.TestCase):

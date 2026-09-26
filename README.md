@@ -31,7 +31,7 @@ MOVE_PATH=C:\Users\YourName\Desktop\Mods
 - **Batch download** with SteamCMD, with automatic retries for timeouts.
 - **Update tracking**: the *Installed* tab shows which mods have updates. *Update all* only re-downloads what changed.
 - **Mod lists**: save named lists, import lists (`.txt`, plus RimWorld `.rml`, saves and `ModsConfig.xml`), export to `.txt`.
-- **Per-game profiles**: each game has its own mod folder, queue and lists. Find games by name, AppID, or from the ones installed on your PC.
+- **Per-game profiles**: each game has its own mod folder, queue and lists. Find games by name, from the ones installed on your PC, or paste an AppID, a store link or any Workshop link.
 - **Copy or link**: mods are copied into your game's mod folder, or linked (symlink / junction) to save disk space.
 - **No setup hunt**: SteamCMD is found automatically, or installed for you on first run.
 
@@ -80,13 +80,12 @@ Most games work as-is. For games with their own mod list format, add a small han
 
 ## Building
 
-```bash
-pip install -r requirements.txt pyinstaller
-pyinstaller jmd.spec          # → dist/JModDownloader/
-python -m unittest tests.test_core
-```
+Only Python 3 is needed. The scripts create a `.venv`, install the dependencies there, run the tests and build.
 
-Tagging `v*` builds Windows and Linux releases through GitHub Actions.
+- **Linux:** `./build.sh` → `dist/JModDownloader/JModDownloader` + `dist/JModDownloader-Linux.tar.gz`
+- **Windows:** double-click `build.bat` → `dist\JModDownloader\JModDownloader.exe` + `dist\JModDownloader-Windows.zip`
+
+A local build bundles your PC's libraries, so it runs on that PC (and on newer systems). Tagging `v*` builds the Windows and Linux releases through GitHub Actions on older runners, so they run on more systems.
 
 ---
 
@@ -106,7 +105,7 @@ Tagging `v*` builds Windows and Linux releases through GitHub Actions.
 - Embedded Workshop browser with **+ Add** buttons on mods and collections.
 - Collections, automatic dependencies, named lists, import/export.
 - Update tracking and *Update all*.
-- Per-game profiles, game search and installed-game detection.
+- Per-game profiles, game search and installed-game detection. Profiles can also be made from an AppID, a store link or a Workshop link.
 - SteamCMD auto-install, retries, login fallback for ownership-gated games.
 
 ### Version 1.1 (2026-02-24)
@@ -122,3 +121,21 @@ Tagging `v*` builds Windows and Linux releases through GitHub Actions.
 
 ### Special Thanks to
 - [Swjeer](https://github.com/Swjeer) for testing the Windows version.
+
+---
+
+## License
+
+**J Mod Downloader**: Copyright (C) 2025-2026 Yusuf Mert Turan
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along with this program (see [LICENSE](LICENSE)). If not, see <https://www.gnu.org/licenses/>.
+
+Contact: [jopsepsmert@gmail.com](mailto:jopsepsmert@gmail.com)
+
+### Third-party
+- [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/) fonts: SIL Open Font License 1.1 (`jmd/assets/fonts/OFL-*.txt`).
+- Icon paths from [Lucide](https://lucide.dev) (ISC) and Feather (MIT): `jmd/assets/LICENSE-Lucide.txt`.

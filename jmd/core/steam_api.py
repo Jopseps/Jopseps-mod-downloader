@@ -1,3 +1,5 @@
+# Copyright (C) 2025-2026 Yusuf Mert Turan
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import html
 import json
 import re
@@ -165,6 +167,12 @@ def get_app(app_id):
         return None
     info = entry.get("data", {})
     return {"app_id": int(app_id), "name": info.get("name", ""), "image": info.get("header_image", "")}
+
+
+def app_of_item(mod_id):
+    """AppID a Workshop item or collection belongs to, or None when Steam doesn't know the item."""
+    entry = get_details([mod_id]).get(str(mod_id))
+    return entry["app_id"] if entry and entry["ok"] and entry["app_id"] else None
 
 
 def capsule_url(app_id):
