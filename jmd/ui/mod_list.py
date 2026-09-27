@@ -165,6 +165,13 @@ class ModDelegate(QStyledItemDelegate):
                 right -= 14
                 icons.paint(p, "lock", QRect(right, cy - 7, 14, 14), C["text-faint"], 2.0)
                 right -= 6
+            pct = mgr.update_progress(uid)
+            if pct is not None:
+                right = self._badge(p, right, cy, f"{int(pct)}%", C["steam-blue"], "#17324a")
+            elif mgr.outdated(uid):
+                right -= 15
+                icons.paint(p, "refresh", QRect(right, cy - 7, 15, 15), STATUS["outdated"][1], 2.2)
+                right -= 6
             if self.side == "active":
                 issues = mgr.issues_for(uid)
                 if issues:
@@ -200,6 +207,7 @@ class ModListView(QListView):
     """Extended selection, drag within and across columns, Enter / double-click switches side."""
     toggled = Signal(list)       # uids to move to the other column
     current = Signal(str)        # focused uid for the details panel
+    deleteRequested = Signal(list)
 
     def __init__(self, model, delegate, parent=None):
         super().__init__(parent)
@@ -253,5 +261,10 @@ class ModListView(QListView):
             uids = self.selected_uids()
             if uids:
                 self.toggled.emit(uids)
+            return
+        if e.key() == Qt.Key_Delete:
+            uids = self.selected_uids()
+            if uids:
+                self.deleteRequested.emit(uids)
             return
         super().keyPressEvent(e)

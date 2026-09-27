@@ -9,7 +9,7 @@ from PySide6.QtGui import QDesktopServices, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import QFrame, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from jmd.core import ids, mods, validate
-from jmd.ui.delegates import fmt_size, placeholder_brush
+from jmd.ui.delegates import fmt_date, fmt_size, placeholder_brush
 from jmd.ui.tokens import C, STATUS
 from jmd.ui.widgets import button, hbox, label
 
@@ -52,6 +52,7 @@ class Preview(QWidget):
 class DetailsPanel(QFrame):
     selectRequested = Signal(str)   # a dependency was clicked
     webRequested = Signal(str)      # Workshop page, opened in the app's browser
+    deleteRequested = Signal(list)
 
     def __init__(self, mgr, parent=None):
         super().__init__(parent)
@@ -93,8 +94,12 @@ class DetailsPanel(QFrame):
         self.deps.linkActivated.connect(self._dep_clicked)
         self.folder_btn = button("Open folder", size="sm", icon="folder", icon_size=13)
         self.web_btn = button("Workshop page", size="sm", icon="external", icon_size=13)
+        self.update_btn = button("Update", "primary", "sm", icon="download", icon_size=13)
+        self.delete_btn = button("Delete…", "danger", "sm", icon="trash", icon_size=13, icon_color=C["danger"])
         self.folder_btn.clicked.connect(self._open_folder)
         self.web_btn.clicked.connect(self._open_web)
+        self.update_btn.clicked.connect(self._update)
+        self.delete_btn.clicked.connect(lambda: self.deleteRequested.emit([self.uid]))
         self.desc_title = label("Description", "caps")
         self.desc = label("", "dim", wrap=True)
         self.desc.setTextFormat(Qt.PlainText)
@@ -102,11 +107,14 @@ class DetailsPanel(QFrame):
         for w in (self.empty, self.preview, self.name, self.meta, self.facts, self.issues):
             self.lay.addWidget(w)
         self.lay.addLayout(hbox(self.folder_btn, self.web_btn, None, spacing=6))
+        self.lay.addLayout(hbox(self.update_btn, self.delete_btn, None, spacing=6))
         for w in (self.deps_title, self.deps, self.desc_title, self.desc):
             self.lay.addWidget(w)
         self.lay.addStretch(1)
         mgr.changed.connect(self.refresh)
         mgr.stagedChanged.connect(self.refresh)
+        mgr.app.installedChanged.connect(self.refresh)
+        mgr.app.runChanged.connect(self.refresh)
         self.show_uid("")
 
     def show_uid(self, uid):
@@ -116,7 +124,7 @@ class DetailsPanel(QFrame):
     def refresh(self):
         e = self.mgr.by_uid.get(self.uid)
         parts = (self.preview, self.name, self.meta, self.facts, self.issues, self.folder_btn, self.web_btn,
-                 self.deps_title, self.deps, self.desc_title, self.desc)
+                 self.deps_title, self.deps, self.desc_title, self.desc, self.update_btn, self.delete_btn)
         self.empty.setVisible(e is None)
         for w in parts:
             w.setVisible(e is not None)
@@ -144,6 +152,9 @@ class DetailsPanel(QFrame):
             rows.append(("Game", ", ".join(e.supported)))
         if e.size:
             rows.append(("Size", fmt_size(e.size)))
+        rec = self.mgr.record(e.uid)
+        if rec:
+            rows.append(("Updated", fmt_date(rec.time_updated) + (" · newer on Steam" if rec.outdated else "")))
         rows.append(("ID", e.uid if not e.wid or e.uid == e.wid else f"{e.uid} · {e.wid}"))
         self.facts.setText("<table cellspacing=0 cellpadding=2>" + "".join(
             f"<tr><td style='color:{C['text-faint']};padding-right:10px'>{k}</td>"
@@ -169,10 +180,20 @@ class DetailsPanel(QFrame):
         self.deps.setText("<br>".join(lines))
         self.folder_btn.setEnabled(bool(e.path) and os.path.isdir(e.path))
         self.web_btn.setVisible(bool(e.wid))
+        pct = self.mgr.update_progress(e.uid)
+        self.update_btn.setVisible(self.mgr.outdated(e.uid) or pct is not None)
+        self.update_btn.setEnabled(pct is None and not self.mgr.app.run)
+        self.update_btn.setText(f"Updating {int(pct)}%" if pct is not None else "Update")
+        self.delete_btn.setVisible(self.mgr.deletable(e.uid))
         self.desc_title.setVisible(bool(e.description))
         self.desc.setVisible(bool(e.description))
         text = e.description.strip()
         self.desc.setText(text[:1500] + ("…" if len(text) > 1500 else ""))
+
+    def _update(self):
+        rec = self.mgr.record(self.uid)
+        if rec:
+            self.mgr.app.update_ids([rec.id])
 
     def _dep_clicked(self, uid):
         self.selectRequested.emit(uid)

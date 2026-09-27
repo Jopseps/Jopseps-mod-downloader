@@ -6,7 +6,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout)
 
-from jmd.core import ids, validate
+from jmd.core import ids, mods, validate
 from jmd.ui import icons
 from jmd.ui.details_panel import DetailsPanel
 from jmd.ui.mod_list import ModDelegate, ModListModel, ModListView
@@ -73,6 +73,7 @@ class ManageView(QFrame):
         self.banner = QLabel()
         self.banner.setObjectName("InfoBanner")
         self.banner.setWordWrap(True)
+        self.banner.setTextFormat(Qt.RichText)
         self.banner.hide()
         root.addWidget(self.banner)
 
@@ -96,6 +97,7 @@ class ManageView(QFrame):
         self.details = DetailsPanel(mgr)
         self.details.selectRequested.connect(self.reveal)
         self.details.webRequested.connect(self.webRequested)
+        self.details.deleteRequested.connect(self.delete)
         split = QSplitter(Qt.Horizontal)
         split.setHandleWidth(5)
         split.setChildrenCollapsible(False)
@@ -117,6 +119,11 @@ class ManageView(QFrame):
         self.issues_btn = button("", "ghost", icon="warn", icon_color=STATUS["outdated"][1], icon_size=14)
         self.issues_btn.clicked.connect(self._issues_menu)
         self.summary = label("", "dim")
+        self.check_spin = Spinner()
+        self.check_btn = button("Check updates", "ghost", icon="refresh", icon_size=13)
+        self.check_btn.clicked.connect(mgr.app.check_updates)
+        self.update_btn = button("Update all", icon="download", icon_size=13)
+        self.update_btn.clicked.connect(mgr.app.update_all)
         self.changes = label("", "dim")
         self.revert_btn = button("Revert", "ghost")
         self.revert_btn.clicked.connect(mgr.revert)
@@ -124,7 +131,7 @@ class ManageView(QFrame):
         self.apply_btn.clicked.connect(self.apply)
         self.details_btn = icon_button("panel-right", "Show / hide details", 30, 16, C["text-dim"])
         self.details_btn.clicked.connect(lambda: self.details.setVisible(not self.details.isVisible()))
-        for w in (self.issues_btn, self.summary):
+        for w in (self.issues_btn, self.summary, self.check_spin, self.check_btn, self.update_btn):
             fl.addWidget(w)
         fl.addStretch(1)
         for w in (self.changes, self.revert_btn, self.apply_btn, self.details_btn):
@@ -134,6 +141,7 @@ class ManageView(QFrame):
         # === WIRING ===
         for col, other in ((self.inactive, "activate"), (self.active, "deactivate")):
             col.view.toggled.connect(getattr(mgr, other))
+            col.view.deleteRequested.connect(self.delete)
             col.view.current.connect(self.details.show_uid)
             col.view.setContextMenuPolicy(Qt.CustomContextMenu)
             col.view.customContextMenuRequested.connect(lambda pos, c=col: self._menu(c, pos))
@@ -141,6 +149,11 @@ class ManageView(QFrame):
         mgr.stagedChanged.connect(self.refresh)
         mgr.scanningChanged.connect(self.spinner.setVisible)
         mgr.modsetChanged.connect(self.refresh)
+        app = mgr.app
+        for sig in (app.installedChanged, app.runChanged):
+            sig.connect(self.refresh)
+            sig.connect(lambda *_: (self.inactive.view.viewport().update(), self.active.view.viewport().update()))
+        app.checkingChanged.connect(lambda _: self.refresh())
         thumbs.ready.connect(lambda _: (self.inactive.view.viewport().update(), self.active.view.viewport().update()))
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=self.apply, context=Qt.WidgetWithChildrenShortcut)
         self.refresh()
@@ -163,7 +176,18 @@ class ManageView(QFrame):
         self.revert_btn.setEnabled(ch.count > 0)
         self.apply_btn.setEnabled(ch.count > 0 and not m.apply_block)
         self.banner.setVisible(bool(m.apply_block) and m.app.profile is not None)
-        self.banner.setText(m.apply_block)
+        link = f"<a style='color:{C['steam-blue']};text-decoration:none' href='profile'>Open profile settings</a>"
+        self.banner.setText(f"{m.apply_block} &nbsp;{link}")
+        app = m.app
+        outdated = len(app.outdated())
+        updating = len(app.updating)
+        self.check_spin.setVisible(app.checking)
+        self.check_btn.setVisible(bool(app.installed))
+        self.check_btn.setText("Checking…" if app.checking else "Check updates")
+        self.check_btn.setEnabled(not app.checking and app.run is None)
+        self.update_btn.setVisible(outdated > 0 or updating > 0)
+        self.update_btn.setText(f"Updating {updating}…" if updating else f"Update all ({outdated})")
+        self.update_btn.setEnabled(outdated > 0 and app.run is None and not app.checking)
 
     def reveal(self, uid):
         """Select uid in whichever column holds it."""
@@ -173,6 +197,35 @@ class ManageView(QFrame):
         col.view.select_uids([uid])
         col.view.setFocus()
         self.details.show_uid(uid)
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        self.mgr.auto_check()
+
+    # === DELETE ===
+    def delete(self, uids):
+        m = self.mgr
+        uids = [u for u in uids if m.deletable(u)]
+        if not uids:
+            m.app.toast.emit("Steam subscriptions and game files can't be deleted here")
+            return
+        local = [u for u in uids if m.by_uid[u].source != mods.JMM]
+        names = ", ".join(m.title(u) for u in uids[:5]) + ("…" if len(uids) > 5 else "")
+        text = f"Delete {len(uids)} mod{'s' if len(uids) != 1 else ''} from disk?\n\n{names}"
+        if local:
+            text += (f"\n\n{len(local)} of them were installed by hand. There's no copy to restore them from: "
+                     "this is permanent.")
+        else:
+            text += "\n\nYou can download them again later."
+        box = QMessageBox(self)
+        box.setWindowTitle("Delete mods")
+        box.setIcon(QMessageBox.Warning)
+        box.setText(text)
+        go = box.addButton("Delete", QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        if box.clickedButton() is go:
+            m.delete(uids)
 
     # === APPLY ===
     def apply(self):
@@ -301,6 +354,8 @@ class ManageView(QFrame):
                 first = next((u for u in m.staged if u not in uids), None)
                 menu.addAction("Move to top", lambda: m.activate(uids, first))
                 menu.addAction("Move to bottom", lambda: m.activate(uids))
+        if any(m.deletable(u) for u in uids):
+            menu.addAction(icons.icon("trash", C["danger"], 14), "Delete…", lambda: self.delete(uids))
         if len(uids) == 1:
             e = m.by_uid.get(uids[0])
             menu.addSeparator()

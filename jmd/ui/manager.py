@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Manage view state: installed mods, the active list on disk, and the staged edit of it. Apply writes it."""
 import os
+import shlex
+import shutil
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QProcess, QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 
-from jmd.core import library, mods, rimworld, sorting, steamcmd, validate
-from jmd.handlers.base import GameContext
+from jmd.core import library, mods, rimworld, sorting, steamcmd, sync, validate
+from jmd.handlers.base import GameContext, disabled_dir
 from jmd.ui.async_task import run_async
 from jmd.ui.controller import LOG_ERR
 
@@ -37,6 +40,7 @@ class ManagerController(QObject):
         self.modset = ""         # name of the last loaded / saved modset
         self._rescan = False
         self._backed_up = set()  # profile ids whose config got a backup this session
+        self._checked = set()    # profile ids whose updates were checked this session
         self._libraries = None
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
@@ -166,6 +170,20 @@ class ManagerController(QObject):
 
     def issues_for(self, uid):
         return [i for i in self.issues if i.uid == uid]
+
+    def record(self, uid):
+        """InstalledRecord for a JMM mod, else None."""
+        e = self.by_uid.get(uid)
+        return self.app.installed.get(e.wid) if e and e.wid and e.source == mods.JMM else None
+
+    def outdated(self, uid):
+        rec = self.record(uid)
+        return bool(rec and rec.outdated)
+
+    def update_progress(self, uid):
+        """0–100 while this mod is being updated, None otherwise."""
+        e = self.by_uid.get(uid)
+        return self.app.updating.get(e.wid) if e and e.wid else None
 
     def pinned(self, uid):
         return self.ordered and self.handler.tier(uid) < 10
@@ -315,6 +333,77 @@ class ManagerController(QObject):
         if self.ordered:
             self.auto_sort()
         self.app.toast.emit(f"Fixed {max(0, before - len(self.issues))} of {before} issues")
+
+    # === UPDATES ===
+    def auto_check(self):
+        """Once per profile per app run, when Manage is shown."""
+        p = self.app.profile
+        if p and p.id not in self._checked and self.app.installed and not self.app.run:
+            self._checked.add(p.id)
+            self.app.check_updates()
+
+    # === DELETE ===
+    def deletable(self, uid):
+        e = self.by_uid.get(uid)
+        return bool(e) and e.source in (mods.JMM, mods.LOCAL)
+
+    def delete(self, uids):
+        """Remove mods from disk: mod-folder entry (links never take their target), the cache copy,
+        the installed record. → number deleted"""
+        app = self.app
+        busy = set(app.run["ids"]) if app.run else set()
+        ctx = self.context()
+        done, errors = [], []
+        for uid in uids:
+            e = self.by_uid.get(uid)
+            if not e or not self.deletable(uid):
+                continue
+            if e.wid and e.wid in busy:
+                errors.append(f"{e.title} is downloading")
+                continue
+            try:
+                cache = ctx.cache_path(e.wid) if e.source == mods.JMM else ""
+                folder = os.path.basename(e.path)
+                places = [e.path]
+                if ctx.mod_dir:
+                    places += [os.path.join(ctx.mod_dir, folder), os.path.join(disabled_dir(ctx.mod_dir), folder)]
+                for path in dict.fromkeys(places):
+                    if path != cache and os.path.lexists(path):
+                        sync.remove(path)
+                if cache:
+                    shutil.rmtree(cache)
+                if e.wid in app.installed and e.source == mods.JMM:
+                    del app.installed[e.wid]
+                done.append(uid)
+            except OSError as err:
+                errors.append(f"{e.title}: {err}")
+        if done:
+            app.store.save_installed(app.profile.id, app.installed)
+            self.staged = [u for u in self.staged if u not in done]
+            self._staged_changed()
+            app.installedChanged.emit()
+        if errors:
+            app.toast.emit(errors[0] + (f" (+{len(errors) - 1} more)" if len(errors) > 1 else ""))
+        elif done:
+            app.toast.emit(f"Deleted {len(done)} mod{'s' if len(done) != 1 else ''}")
+        self.refresh()
+        return len(done)
+
+    # === PLAY ===
+    def play(self):
+        p = self.app.profile
+        if not p:
+            return
+        if p.launch_mode == "exe" and p.exe_path:
+            workdir = os.path.dirname(p.exe_path)
+            ok, _ = QProcess.startDetached(p.exe_path, shlex.split(p.exe_args or ""), workdir)
+            if not ok:
+                self.app.toast.emit(f"Couldn't start {os.path.basename(p.exe_path)}")
+                return
+        elif not QDesktopServices.openUrl(QUrl(f"steam://rungameid/{p.app_id}")):
+            self.app.toast.emit("Steam didn't answer. Is it installed? Or set a custom exe in Profile settings.")
+            return
+        self.app.toast.emit(f"Starting {p.name}…")
 
     # === APPLY ===
     def apply_checks(self):
