@@ -3,15 +3,15 @@
 """Manage mode: Inactive | Active | Details columns, staged edits, Apply / Revert."""
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu, QMessageBox, QSplitter, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox,
+                               QPushButton, QSplitter, QVBoxLayout)
 
 from jmd.core import ids, validate
 from jmd.ui import icons
 from jmd.ui.details_panel import DetailsPanel
 from jmd.ui.mod_list import ModDelegate, ModListModel, ModListView
 from jmd.ui.tokens import C, SIZE, STATUS
-from jmd.ui.widgets import Spinner, button, icon_button, label, restyle
+from jmd.ui.widgets import Spinner, button, icon_button, label
 
 
 class Column(QFrame):
@@ -85,6 +85,13 @@ class ManageView(QFrame):
         self.sort_btn = button("Auto-sort", "ghost", "sm", icon="sort", icon_size=13,
                                tooltip="Sort by each mod's load rules (Harmony, Core and DLC stay on top)")
         self.sort_btn.clicked.connect(mgr.auto_sort)
+        self.modset_btn = QPushButton()
+        self.modset_btn.setProperty("kind", "select")
+        self.modset_btn.setCursor(Qt.PointingHandCursor)
+        self.modset_btn.setIcon(icons.icon("list", C["text-dim"], 14))
+        self.modset_btn.setToolTip("Modsets: saved active lists")
+        self.modset_btn.clicked.connect(self._modset_menu)
+        self.active.head.insertWidget(2, self.modset_btn)
         self.active.head.addWidget(self.sort_btn)
         self.details = DetailsPanel(mgr)
         self.details.selectRequested.connect(self.reveal)
@@ -133,6 +140,7 @@ class ManageView(QFrame):
         mgr.changed.connect(self.refresh)
         mgr.stagedChanged.connect(self.refresh)
         mgr.scanningChanged.connect(self.spinner.setVisible)
+        mgr.modsetChanged.connect(self.refresh)
         thumbs.ready.connect(lambda _: (self.inactive.view.viewport().update(), self.active.view.viewport().update()))
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=self.apply, context=Qt.WidgetWithChildrenShortcut)
         self.refresh()
@@ -141,6 +149,8 @@ class ManageView(QFrame):
     def refresh(self):
         m = self.mgr
         self.sort_btn.setVisible(m.ordered)
+        name = m.modset or "Modsets"
+        self.modset_btn.setText(f" {name}" + (" *" if m.modset and m.dirty else "") + "  ▾")
         errors = sum(1 for i in m.issues if i.level == validate.ERROR)
         n = len(m.issues)
         self.issues_btn.setVisible(n > 0)
@@ -190,14 +200,92 @@ class ManageView(QFrame):
 
     # === MENUS ===
     def _issues_menu(self):
+        m = self.mgr
         menu = QMenu(self)
-        for issue in self.mgr.issues[:40]:
+        if any(m.fixable(i) for i in m.issues):
+            menu.addAction(icons.icon("check", C["accent"], 14), "Fix all (activate, download missing, sort)", m.fix_all)
+            menu.addSeparator()
+        for issue in m.issues[:40]:
             color = STATUS["failed" if issue.level == validate.ERROR else "outdated"][1]
-            act = menu.addAction(icons.icon("warn", color, 14), f"{self.mgr.title(issue.uid)}: {issue.text}")
-            act.triggered.connect(lambda _=False, u=issue.uid: self.reveal(u))
-        if len(self.mgr.issues) > 40:
-            menu.addAction(f"… {len(self.mgr.issues) - 40} more").setEnabled(False)
+            text = f"{m.title(issue.uid)}: {issue.text}"
+            fix = m.fixable(issue)
+            if fix:
+                sub = menu.addMenu(icons.icon("warn", color, 14), text)
+                sub.addAction(fix, lambda i=issue: m.fix(i))
+                sub.addAction("Show", lambda u=issue.uid: self.reveal(u))
+            else:
+                menu.addAction(icons.icon("warn", color, 14), text, lambda u=issue.uid: self.reveal(u))
+        if len(m.issues) > 40:
+            menu.addAction(f"… {len(m.issues) - 40} more").setEnabled(False)
         menu.exec(self.issues_btn.mapToGlobal(QPoint(0, 0)) - QPoint(0, menu.sizeHint().height() + 4))
+
+    def _modset_menu(self):
+        m = self.mgr
+        if not m.app.profile:
+            return
+        menu = QMenu(self)
+        check = icons.icon("check", C["accent"], 14)
+        names = m.modset_names()
+        for name in names:
+            act = menu.addAction(name, lambda n=name: self._offer_missing(m.load_modset(n)))
+            if name == m.modset:
+                act.setIcon(check)
+        if not names:
+            menu.addAction("No saved modsets").setEnabled(False)
+        menu.addSeparator()
+        if m.modset:
+            menu.addAction(f'Save "{m.modset}"', lambda: m.save_modset(m.modset))
+        menu.addAction("Save as…", self._save_as)
+        menu.addAction("Import…", self._import)
+        menu.addAction("Export .txt…", self._export)
+        if m.modset:
+            menu.addSeparator()
+            menu.addAction(icons.icon("trash", C["danger"], 14), f'Delete "{m.modset}"', self._delete)
+        menu.exec(self.modset_btn.mapToGlobal(self.modset_btn.rect().bottomLeft()) + QPoint(0, 4))
+
+    def _save_as(self):
+        name, ok = QInputDialog.getText(self, "Save modset", "Name:", text=self.mgr.modset)
+        if ok and name.strip():
+            self.mgr.save_modset(name.strip())
+
+    def _filters(self, pairs):
+        return ";;".join(f"{n} ({p})" for n, p in pairs) + ";;All files (*)"
+
+    def _import(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import modset", "", self._filters(self.mgr.handler.modset_import_filters))
+        if path:
+            self._offer_missing(self.mgr.import_modset(path))
+
+    def _export(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Export active list", f"{self.mgr.modset or 'modset'}.txt",
+                                              "Text list (*.txt)")
+        if path:
+            self.mgr.export_modset(path)
+
+    def _delete(self):
+        name = self.mgr.modset
+        if QMessageBox.question(self, "Delete modset", f'Delete "{name}"? Mods on disk are not touched.') == QMessageBox.Yes:
+            self.mgr.delete_modset(name)
+
+    def _offer_missing(self, missing):
+        if not missing:
+            return
+        can = [r for r in missing if r.wid]
+        names = ", ".join(r.name or r.uid or r.wid for r in missing[:6]) + ("…" if len(missing) > 6 else "")
+        if not can:
+            QMessageBox.information(self, "Not installed", f"{len(missing)} mods aren't installed and have no "
+                                    f"Workshop ID to download: {names}")
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Mods not installed")
+        box.setIcon(QMessageBox.Question)
+        box.setText(f"{len(missing)} mods in this modset aren't installed: {names}\n\n"
+                    f"Download {len(can)} of them now? They'll be switched on once they arrive.")
+        go = box.addButton("Download", QMessageBox.AcceptRole)
+        box.addButton("Not now", QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is go:
+            self.mgr.download_missing(can)
 
     def _menu(self, col, pos):
         uids = col.view.selected_uids()

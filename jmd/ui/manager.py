@@ -15,6 +15,7 @@ class ManagerController(QObject):
     """Owned by the main window next to AppController. Scans on a worker, mutates on the UI thread."""
 
     changed = Signal()          # entries rescanned (rows may appear / vanish)
+    modsetChanged = Signal()    # current modset name or the saved list changed
     stagedChanged = Signal()    # staged order or issues changed
     scanningChanged = Signal(bool)
 
@@ -32,6 +33,7 @@ class ManagerController(QObject):
         self.apply_block = ""    # why Apply can't run, '' when it can
         self.config_mtime = 0.0
         self.scanning = False
+        self.modset = ""         # name of the last loaded / saved modset
         self._rescan = False
         self._backed_up = set()  # profile ids whose config got a backup this session
         self._libraries = None
@@ -64,6 +66,8 @@ class ManagerController(QObject):
 
     # === SCAN ===
     def _profile_changed(self):
+        self.modset = ""
+        self.modsetChanged.emit()
         self.entries, self.by_uid, self.dups = [], {}, []
         self.saved, self.staged, self.issues, self.cycles = [], [], [], []
         self.changed.emit()
@@ -198,6 +202,107 @@ class ManagerController(QObject):
         self.issues = validate.check(self.staged, self.by_uid, self.version, self.ordered, self.dups,
                                      self.cycles, self.handler.tier)
         self.stagedChanged.emit()
+
+    # === MODSETS ===
+    def modset_names(self):
+        return self.app.store.modset_names(self.app.profile.id) if self.app.profile else []
+
+    def save_modset(self, name):
+        refs = [self.by_uid[u].ref() if u in self.by_uid else mods.ModRef(uid=u) for u in self.staged]
+        self.app.store.save_modset(self.app.profile.id, mods.Modset(name=name, mods=refs))
+        self.modset = name
+        self.modsetChanged.emit()
+        self.app.toast.emit(f'Saved modset "{name}"')
+
+    def load_modset(self, name):
+        """Stage the modset (Revert undoes it). → refs that aren't installed."""
+        ms = self.app.store.load_modset(self.app.profile.id, name)
+        if ms is None:
+            self.app.toast.emit(f'Modset "{name}" not found')
+            return []
+        return self._stage_refs(ms.mods, name)
+
+    def _stage_refs(self, refs, name):
+        active, missing = mods.resolve(refs, list(self.by_uid.values()))
+        locked = [u for u in self.staged if u in self.by_uid and not self.by_uid[u].toggleable and u not in active]
+        self.staged = self._arrange(locked + active)
+        self.cycles = []
+        self.modset = name
+        self.modsetChanged.emit()
+        self._staged_changed()
+        self.app.toast.emit(f'Loaded "{name}"' + (f" · {len(missing)} not installed" if missing else ""))
+        return missing
+
+    def import_modset(self, path):
+        """Import a list file as a new modset and stage it. → missing refs."""
+        try:
+            refs = self.handler.import_modset(path)
+        except OSError as e:
+            self.app.toast.emit(f"Import failed: {e}")
+            return []
+        if not refs:
+            self.app.toast.emit(f"No mods found in {os.path.basename(path)}")
+            return []
+        name = os.path.splitext(os.path.basename(path))[0]
+        self.app.store.save_modset(self.app.profile.id, mods.Modset(name=name, mods=refs))
+        return self._stage_refs(refs, name)
+
+    def export_modset(self, path):
+        wids = [self.by_uid[u].wid for u in self.staged if u in self.by_uid and self.by_uid[u].wid]
+        skipped = len(self.staged) - len(wids)
+        try:
+            self.handler.export_list(wids, path)
+        except OSError as e:
+            self.app.toast.emit(f"Export failed: {e}")
+            return
+        self.app.toast.emit(f"Exported {len(wids)} mods" + (f" · {skipped} without a Workshop ID left out" if skipped else ""))
+
+    def delete_modset(self, name):
+        self.app.store.delete_modset(self.app.profile.id, name)
+        if self.modset == name:
+            self.modset = ""
+        self.modsetChanged.emit()
+        self.app.toast.emit(f'Deleted modset "{name}"')
+
+    def download_missing(self, refs):
+        """Queue downloads for refs with a Workshop id; they get staged Active once they land."""
+        wids = [r.wid for r in refs if r.wid]
+        if not wids:
+            self.app.toast.emit("None of them has a Workshop ID to download")
+            return 0
+        pid = self.app.profile.id
+        self.app.store.save_pending(pid, self.app.store.load_pending(pid) + wids)
+        self.app.add_ids(wids)
+        return len(wids)
+
+    # === FIXES ===
+    def fixable(self, issue):
+        """Button text for an issue's fix, '' when there's nothing to do automatically."""
+        return {validate.INACTIVE_DEP: "Activate", validate.MISSING_DEP: "Download" if issue.fix else "",
+                validate.ORDER: "Auto-sort", validate.CYCLE: "", validate.NOT_INSTALLED: "Remove"}.get(issue.kind, "")
+
+    def fix(self, issue, sort=True):
+        if issue.kind == validate.INACTIVE_DEP:
+            self.activate(issue.fix, before=issue.uid if self.ordered else None)
+        elif issue.kind == validate.MISSING_DEP and issue.fix:
+            self.download_missing([mods.ModRef(wid=w) for w in issue.fix])
+        elif issue.kind == validate.ORDER and sort:
+            self.auto_sort()
+        elif issue.kind == validate.NOT_INSTALLED:
+            self.deactivate([issue.uid])
+
+    def fix_all(self):
+        """Activate inactive dependencies, download missing ones, then sort."""
+        before = len(self.issues)
+        seen = set()
+        for issue in list(self.issues):
+            key = (issue.kind, tuple(issue.fix))
+            if issue.kind in (validate.INACTIVE_DEP, validate.MISSING_DEP) and key not in seen:
+                seen.add(key)
+                self.fix(issue, sort=False)
+        if self.ordered:
+            self.auto_sort()
+        self.app.toast.emit(f"Fixed {max(0, before - len(self.issues))} of {before} issues")
 
     # === APPLY ===
     def apply_checks(self):
