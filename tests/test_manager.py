@@ -303,6 +303,28 @@ class GenericHandlerTest(unittest.TestCase):
         self._roundtrip("hardlink")
 
 
+class PlaceDownloadTest(unittest.TestCase):
+    def test_new_parked_update_in_place(self):
+        from jmd.handlers import get
+        from jmd.handlers.base import disabled_dir
+        h = get("generic")
+        for mode in ("copy", "link", "hardlink"):
+            with tempfile.TemporaryDirectory() as t:
+                src = os.path.join(t, "cache", "7")
+                _mod(os.path.join(t, "cache"), "7")
+                mod_dir = os.path.join(t, "Mods")
+                profile = models.Profile(id="g", name="G", app_id=1, mod_dir=mod_dir, sync_mode=mode)
+                h.place_download(profile, "7", src)
+                self.assertFalse(os.path.lexists(os.path.join(mod_dir, "7")), mode)
+                self.assertEqual(os.path.isdir(os.path.join(disabled_dir(mod_dir), "7")), mode == "copy")
+                # already active → updated where it is
+                sync.sync_item(src, mod_dir, "7", mode) if mode != "copy" else shutil.copytree(src, os.path.join(mod_dir, "7"), dirs_exist_ok=True)
+                with open(os.path.join(src, "new.txt"), "w") as f:
+                    f.write("v2")
+                h.place_download(profile, "7", src)
+                self.assertTrue(os.path.isfile(os.path.join(mod_dir, "7", "new.txt")), mode)
+
+
 class RimWorldHandlerTest(unittest.TestCase):
     def test_scan_read_write(self):
         from jmd.handlers import get

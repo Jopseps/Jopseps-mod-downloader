@@ -82,6 +82,21 @@ class GameHandler:
     def post_sync(self, mod_dir, mod_id):
         """Hook after a mod lands in mod_dir (e.g. write a descriptor). No-op by default."""
 
+    def place_download(self, profile, mod_id, content_path, on_fallback=None):
+        """Where a finished download goes. An update to an active mod syncs in place; a new mod is parked
+        (cache only for link/hardlink, the disabled folder for copy) so it shows up Inactive. → path"""
+        mod_dir = profile.mod_dir
+        if not mod_dir:
+            return content_path
+        if os.path.lexists(os.path.join(mod_dir, mod_id)):
+            dst = sync.sync_item(content_path, mod_dir, mod_id, profile.sync_mode, on_fallback)
+            self.post_sync(mod_dir, mod_id)
+            return dst
+        parked = disabled_dir(mod_dir)
+        if profile.sync_mode in ("link", "hardlink") and not os.path.isdir(os.path.join(parked, mod_id)):
+            return content_path
+        return sync.sync_item(content_path, parked, mod_id, "copy")
+
     @property
     def label(self):
         return f"{self.name} ({self.summary})"

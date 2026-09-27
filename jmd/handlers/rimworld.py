@@ -5,7 +5,7 @@ import re
 import sys
 
 from jmd import paths
-from jmd.core import library, validate
+from jmd.core import library, sync, validate
 from jmd.core import rimworld as rw
 from jmd.core.mods import JMM, LOCAL, STEAM, ModRef, norm_uid
 from jmd.handlers.base import GameHandler
@@ -90,6 +90,14 @@ class RimWorldHandler(GameHandler):
         return os.path.expanduser("~/.local/share/Steam/steamapps/common/RimWorld/Mods")
 
     # === MANAGER ===
+    def place_download(self, profile, mod_id, content_path, on_fallback=None):
+        """Always into the mod folder: ModsConfig.xml, not the folder, decides what's active."""
+        if not profile.mod_dir:
+            return content_path
+        dst = sync.sync_item(content_path, profile.mod_dir, mod_id, profile.sync_mode, on_fallback)
+        self.post_sync(profile.mod_dir, mod_id)
+        return dst
+
     def game_version(self, ctx):
         return rw.game_version(self.game_dir(ctx))
 
