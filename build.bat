@@ -21,7 +21,7 @@ echo ==^> Installing dependencies
 .venv\Scripts\python -m pip install --quiet -r requirements.txt pyinstaller || (echo Build failed. & pause & exit /b 1)
 
 echo ==^> Tests
-.venv\Scripts\python -m unittest tests.test_core || (echo Build failed. & pause & exit /b 1)
+.venv\Scripts\python -m unittest tests.test_core tests.test_manager || (echo Build failed. & pause & exit /b 1)
 
 echo ==^> Building
 .venv\Scripts\python -m PyInstaller --noconfirm jmd.spec || (echo Build failed. & pause & exit /b 1)

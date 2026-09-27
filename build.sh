@@ -18,7 +18,7 @@ echo "==> Installing dependencies"
 .venv/bin/python -m pip install --quiet -r requirements.txt pyinstaller
 
 echo "==> Tests"
-.venv/bin/python -m unittest tests.test_core
+.venv/bin/python -m unittest tests.test_core tests.test_manager
 
 echo "==> Building"
 .venv/bin/python -m PyInstaller --noconfirm jmd.spec
