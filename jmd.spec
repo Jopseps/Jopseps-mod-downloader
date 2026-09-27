@@ -16,6 +16,8 @@ a = Analysis(
         # handlers are discovered with pkgutil at runtime, so name them for the analyzer
         "jmd.handlers.generic",
         "jmd.handlers.rimworld",
+        "jmd.handlers.tts",
+        "jmd.selftest",
         "PySide6.QtWebEngineWidgets",
         "PySide6.QtWebEngineCore",
         "PySide6.QtWebChannel",
