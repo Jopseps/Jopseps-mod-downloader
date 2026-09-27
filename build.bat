@@ -1,7 +1,7 @@
 @echo off
 rem Copyright (C) 2025-2026 Yusuf Mert Turan
 rem SPDX-License-Identifier: AGPL-3.0-or-later
-rem Local Windows build: dist\JModDownloader\ + dist\JModDownloader-Windows.zip
+rem Local Windows build: dist\JModManager\ + dist\JModManager-Windows.zip
 rem Needs only Python 3 from python.org. Dependencies go into .venv, not the system.
 setlocal
 cd /d "%~dp0"
@@ -25,7 +25,7 @@ echo ==^> Tests
 
 echo ==^> Building
 .venv\Scripts\python -m PyInstaller --noconfirm jmd.spec || (echo Build failed. & pause & exit /b 1)
-powershell -NoProfile -Command "Compress-Archive -Force -Path dist\JModDownloader -DestinationPath dist\JModDownloader-Windows.zip" || (echo Build failed. & pause & exit /b 1)
+powershell -NoProfile -Command "Compress-Archive -Force -Path dist\JModManager -DestinationPath dist\JModManager-Windows.zip" || (echo Build failed. & pause & exit /b 1)
 
-echo ==^> Done: dist\JModDownloader\JModDownloader.exe (archive: dist\JModDownloader-Windows.zip)
+echo ==^> Done: dist\JModManager\JModManager.exe (archive: dist\JModManager-Windows.zip)
 pause

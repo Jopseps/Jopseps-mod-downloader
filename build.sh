@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright (C) 2025-2026 Yusuf Mert Turan
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Local Linux build: dist/JModDownloader/ + dist/JModDownloader-Linux.tar.gz
+# Local Linux build: dist/JModManager/ + dist/JModManager-Linux.tar.gz
 # Needs only Python 3. Dependencies go into .venv (pip comes from Python's own ensurepip), not the system.
 # A local build bundles this PC's libraries, so it runs here and on newer distros; releases are built by CI.
 set -euo pipefail
@@ -22,6 +22,6 @@ echo "==> Tests"
 
 echo "==> Building"
 .venv/bin/python -m PyInstaller --noconfirm jmd.spec
-tar -C dist -czf dist/JModDownloader-Linux.tar.gz JModDownloader
+tar -C dist -czf dist/JModManager-Linux.tar.gz JModManager
 
-echo "==> Done: dist/JModDownloader/JModDownloader (archive: dist/JModDownloader-Linux.tar.gz)"
+echo "==> Done: dist/JModManager/JModManager (archive: dist/JModManager-Linux.tar.gz)"
