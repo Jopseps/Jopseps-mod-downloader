@@ -132,7 +132,10 @@ def remove(path):
 
 
 def sync_item(src, mod_dir, mod_id, mode, on_fallback=None):
-    """Put one mod into mod_dir. Hardlink mode falls back to a copy across drives (on_fallback is told)."""
+    """Put one mod into mod_dir. Hardlink mode falls back to a copy across drives (on_fallback is told).
+    src may be a legacy item's single file (SteamCMD reports <id>/<hcontent>_legacy.bin): its folder goes."""
+    if os.path.isfile(src):
+        src = os.path.dirname(src)
     dst = os.path.join(mod_dir, mod_id)
     if mode == "link":
         link(src, dst)

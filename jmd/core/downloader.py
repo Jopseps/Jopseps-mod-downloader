@@ -29,6 +29,8 @@ class Downloader:
       ("login_failed", reason)
       ("finished", summary)              {"done", "failed", "login", "cancelled"}
     sync(mod_id, content_path) runs in the worker after each success; raising marks the item failed.
+    content_path is what SteamCMD printed: the item folder, or for legacy (single-file) items the file itself,
+    <id>/<hcontent>_legacy.bin.
     """
 
     def __init__(self, exe, install_dir, app_id, items, on_event, sync=None, retries=3,
