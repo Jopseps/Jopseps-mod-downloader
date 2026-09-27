@@ -172,6 +172,8 @@ QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 #RunBox {{ background: {c['sunken']}; border: 1px solid {c['border-strong']}; border-radius: 3px; }}
 #NavBar {{ background: {c['bg']}; border-bottom: 1px solid {c['black']}; }}
 #UrlBox {{ background: {c['sunken']}; border: 1px solid {c['border']}; border-radius: 3px; }}
+#UrlBox[editing="true"] {{ border-color: {c['accent']}; }}
+QLineEdit#UrlEdit {{ background: transparent; border: none; padding: 0; font-family: "{FONT_MONO}"; font-size: 11.5px; color: {c['text-strong']}; }}
 #LogPanel {{ background: {c['sunken']}; border-top: 1px solid {c['black']}; }}
 #LogHeader:hover {{ background: #171f29; }}
 QPlainTextEdit#Log {{ background: {c['sunken']}; border: none; border-top: 1px solid #1e2935; border-radius: 0;

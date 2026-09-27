@@ -1,17 +1,17 @@
 # Copyright (C) 2025-2026 Yusuf Mert Turan
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Right side: nav bar + embedded Steam Workshop. Injected '+ Add' buttons arrive in milestone 3."""
+"""Right side: nav bar with an editable address bar + embedded Steam Workshop with injected '+ Add' buttons."""
 import os
 
-from PySide6.QtCore import QRect, Qt, QTimer, QUrl
-from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import QRect, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QShortcut
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QStackedLayout, QVBoxLayout, QWidget
 
 from jmd import paths
-from jmd.core import steam_api
+from jmd.core import ids, steam_api
 from jmd.ui import icons
 from jmd.ui.tokens import C, SIZE
-from jmd.ui.widgets import icon_button, label
+from jmd.ui.widgets import icon_button, label, restyle
 
 try:
     if os.environ.get("JMD_NO_WEB"):
@@ -22,6 +22,12 @@ try:
     HAVE_WEB = True
 except ImportError:
     HAVE_WEB = False
+
+if HAVE_WEB:
+    class WebView(QWebEngineView):
+        def createWindow(self, _type):
+            """target=_blank / window.open: load in this view instead of dropping the request."""
+            return self
 
 
 class LoadBar(QWidget):
@@ -41,6 +47,49 @@ class LoadBar(QWidget):
         p.fillRect(self.rect(), QColor(C["bg"]))
         if 0 < self.pct < 100:
             p.fillRect(QRect(0, 0, int(self.width() * self.pct / 100), 2), QColor(C["steam-blue"]))
+
+
+class UrlEdit(QLineEdit):
+    """Address field shown while editing. Enter submits, Esc or focus loss cancels."""
+    submitted = Signal(str)
+    cancelled = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("UrlEdit")
+        self._done = False
+
+    def start(self, text):
+        self._done = False
+        self.setText(text)
+        self.setFocus(Qt.ShortcutFocusReason)
+        self.selectAll()
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self._done = True
+            self.submitted.emit(self.text())
+        elif e.key() == Qt.Key_Escape:
+            self._done = True
+            self.cancelled.emit()
+        else:
+            super().keyPressEvent(e)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        if not self._done:
+            self._done = True
+            self.cancelled.emit()
+
+
+class UrlBox(QFrame):
+    """Two-tone host/path display; a click swaps in the editable field."""
+    clicked = Signal()
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(e)
 
 
 class BrowserPane(QFrame):
@@ -65,23 +114,39 @@ class BrowserPane(QFrame):
         self.reload = icon_button("refresh", "Reload", icon_size=15)
         for b in (self.back, self.fwd, self.home, self.reload):
             nl.addWidget(b)
-        url_box = QFrame()
+        url_box = self.url_box = UrlBox()
         url_box.setObjectName("UrlBox")
         url_box.setFixedHeight(26)
+        url_box.setCursor(Qt.IBeamCursor)
         ul = QHBoxLayout(url_box)
         ul.setContentsMargins(8, 0, 8, 0)
         ul.setSpacing(6)
-        lock = QLabel()
-        lock.setPixmap(icons.pixmap("lock", "#6fbf4a", 12))
+        self.lock = QLabel()
+        self.lock.setPixmap(icons.pixmap("lock", "#6fbf4a", 12))
+        # page 0: host + path in two tones, page 1: the editable field
+        shown = QWidget()
+        sl = QHBoxLayout(shown)
+        sl.setContentsMargins(0, 0, 0, 0)
+        sl.setSpacing(0)
         self.url_host = QLabel("steamcommunity.com")
         self.url_path = QLabel()
         mono = f"font-family:'JetBrains Mono';font-size:11.5px;background:transparent;"
         self.url_host.setStyleSheet(mono + f"color:{C['text']};")
         self.url_path.setStyleSheet(mono + f"color:{C['text-dim']};")
-        ul.addWidget(lock)
-        ul.addWidget(self.url_host)
-        ul.addSpacing(-6)  # host and path read as one URL
-        ul.addWidget(self.url_path, 1)
+        sl.addWidget(self.url_host)
+        sl.addWidget(self.url_path, 1)
+        self.url_edit = UrlEdit()
+        self.url_stack = QStackedLayout()
+        self.url_stack.addWidget(shown)
+        self.url_stack.addWidget(self.url_edit)
+        ul.addWidget(self.lock)
+        ul.addLayout(self.url_stack, 1)
+        url_box.clicked.connect(self.edit_url)
+        self.url_edit.submitted.connect(self._submit_url)
+        self.url_edit.cancelled.connect(lambda: self._set_editing(False))
+        self.url = QUrl()
+        for keys in ("Ctrl+L", "F6"):
+            QShortcut(QKeySequence(keys), self, activated=self.edit_url, context=Qt.WindowShortcut)
         nl.addSpacing(6)
         nl.addWidget(url_box, 1)
         root.addWidget(nav)
@@ -95,7 +160,7 @@ class BrowserPane(QFrame):
             profile.setPersistentStoragePath(paths.ensure(os.path.join(paths.data_dir(), "web")))
             profile.setCachePath(paths.ensure(os.path.join(paths.data_dir(), "web-cache")))
             profile.setPersistentCookiesPolicy(QWebEngineProfile.ForcePersistentCookies)
-            self.view = QWebEngineView()
+            self.view = WebView()
             self.view.setPage(QWebEnginePage(profile, self.view))
             self.view.page().setBackgroundColor(QColor(C["panel"]))
             self._install_injector(self.view.page())
@@ -147,9 +212,35 @@ class BrowserPane(QFrame):
         else:
             self._url_changed(QUrl(url))
 
+    # === ADDRESS BAR ===
+    def edit_url(self):
+        if self.url_stack.currentIndex() == 1:
+            return
+        self._set_editing(True)
+        self.url_edit.start(self.url.toString())
+
+    def _set_editing(self, on):
+        self.url_stack.setCurrentIndex(1 if on else 0)
+        self.url_box.setProperty("editing", on)
+        restyle(self.url_box)
+
+    def _submit_url(self, text):
+        self._set_editing(False)
+        p = self.ctl.profile
+        target = ids.resolve_address(text, p.app_id if p else 0)
+        if not target:
+            return
+        if self.view:
+            self.view.setUrl(QUrl(target))
+            self.view.setFocus()
+        else:
+            self._url_changed(QUrl(target))
+
     def _url_changed(self, url):
-        self.url_host.setText(url.host() or "steamcommunity.com")
-        path = url.path() + (("?" + url.query()) if url.query() else "")
+        self.url = url
+        self.lock.setVisible(url.scheme() == "https")
+        self.url_host.setText(url.host() or url.toString())
+        path = (url.path() + (("?" + url.query()) if url.query() else "")) if url.host() else ""
         self.url_path.setText(self.url_path.fontMetrics().elidedText(path, Qt.ElideRight, max(80, self.url_path.width())))
         if self.view:
             hist = self.view.history()

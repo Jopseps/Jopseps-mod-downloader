@@ -23,6 +23,17 @@ class IdsTest(unittest.TestCase):
         self.assertEqual(ids.extract_mod_id("steam://url/CommunityFilePage/818773962"), "818773962")
         self.assertIsNone(ids.extract_mod_id("https://steamcommunity.com/workshop/browse/?appid=294100"))
 
+    def test_resolve_address(self):
+        r = ids.resolve_address
+        self.assertEqual(r("https://example.com/a?b=1"), "https://example.com/a?b=1")
+        self.assertEqual(r("store.steampowered.com/app/294100"), "https://store.steampowered.com/app/294100")
+        self.assertEqual(r(" 3533988679 "), ids.workshop_url("3533988679"))
+        self.assertEqual(r("steam://url/CommunityFilePage/818773962"), ids.workshop_url("818773962"))
+        self.assertEqual(r("rimworld sos2", 294100),
+                         "https://steamcommunity.com/workshop/browse/?appid=294100&searchtext=rimworld+sos2&browsesort=textsearch")
+        self.assertEqual(r("harmony"), "https://steamcommunity.com/search/?text=harmony")
+        self.assertIsNone(r("   "))
+
     def test_game_ref(self):
         ref = ids.parse_game_ref
         self.assertEqual(ref(" 294100 "), ("app", "294100"))
