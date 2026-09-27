@@ -13,6 +13,7 @@ INCOMPATIBLE = "incompatible"
 VERSION = "version"
 DUPLICATE = "duplicate"
 CYCLE = "cycle"
+NOT_INSTALLED = "not_installed"  # in the active list, but no such mod on disk
 
 
 @dataclass
@@ -42,10 +43,16 @@ def check(active, entries, game_version="", check_order=True, duplicates=(), cyc
         e = entries.get(uid)
         return e.title if e else uid
 
+    top = None  # highest pinned tier seen so far, for 'Harmony after Core'
     for uid in active:
         e = entries.get(uid)
         if not e:
+            issues.append(Issue(WARN, NOT_INSTALLED, uid, "Active but not installed"))
             continue
+        if check_order and top is not None and tier(uid) < tier(top):
+            issues.append(Issue(WARN, ORDER, uid, f"Should load before {name(top)}"))
+        if top is None or tier(uid) > tier(top):
+            top = uid
         for dep in e.deps:
             if dep.uid not in entries:
                 fix = [dep.wid] if dep.wid else []

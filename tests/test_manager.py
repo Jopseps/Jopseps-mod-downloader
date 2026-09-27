@@ -159,6 +159,12 @@ class ValidateTest(unittest.TestCase):
         issues = validate.check(["a", "b"], es)
         self.assertEqual([i.kind for i in issues], [validate.INCOMPATIBLE])
 
+    def test_pinned_order_and_not_installed(self):
+        es = {"h": entry("h"), "core": entry("core"), "x": entry("x")}
+        tiers = {"h": 0, "core": 1}
+        issues = validate.check(["core", "h", "x", "ghost"], es, tier=lambda u: tiers.get(u, 10))
+        self.assertEqual([(i.uid, i.kind) for i in issues], [("h", validate.ORDER), ("ghost", validate.NOT_INSTALLED)])
+
     def test_no_version_no_warning(self):
         es = {"a": entry("a", supported=["1.4"])}
         self.assertEqual(validate.check(["a"], es, ""), [])
