@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+
+	<name>Tech Robe</name>
+	<author>Hyaukyuu</author>
+	<description>Trimmed for tests.</description>
+	<modVersion IgnoreIfNoMatchingField="True">Release 1.0 - 22.09.26</modVersion>
+	<modIconPath IgnoreIfNoMatchingField="True">TechRobeModIcon</modIconPath>
+	<supportedVersions>
+		<li>1.6</li>
+	</supportedVersions>
+	<packageId>hyaukyuu.techapparel</packageId>
+	<loadAfter>
+		<li>Ludeon.RimWorld</li>
+		<li>Ludeon.RimWorld.Royalty</li>
+		<li>Ludeon.RimWorld.Ideology</li>
+		<li>Ludeon.RimWorld.Biotech</li>
+		<li>Ludeon.RimWorld.Anomaly</li>
+		<li>Ludeon.RimWorld.Odyssey</li>
+		<li>CETeam.CombatExtended</li>
+	</loadAfter>
+
+</ModMetaData>
