@@ -1,6 +1,6 @@
 # J Mod Manager
 
-Download Steam Workshop mods for any game, without subscribing in Steam. Browse the Workshop inside the app, click **+ Add** on mods or whole collections, then download everything in one batch with SteamCMD.
+Manage and download Steam Workshop mods for any game. Turn mods on and off, sort load order, keep modsets, and grab mods or whole collections from the Workshop without subscribing.
 
 Works on **Windows** and **Linux**.
 
@@ -10,15 +10,36 @@ Works on **Windows** and **Linux**.
 
 ## Features
 
-- **Built-in Workshop browser**: every mod tile, mod page and collection gets a **+ Add** button. Click it again (**✓ In list**) to remove.
+### Manage
+- **Inactive / Active columns**: drag mods between them, reorder by dragging, or double-click to switch. Nothing touches the game until you press **Apply**, and **Revert** undoes the edit.
+- **Every mod the game can see**: mods downloaded here, mods you dropped into the mod folder yourself, and Steam subscriptions.
+- **Load order and auto-sort** (RimWorld): sorts by each mod's own rules (`loadAfter`, `loadBefore`, dependencies), with Harmony, Core and the DLCs pinned on top.
+- **Warnings**: missing or inactive dependencies, wrong order, incompatible mods, mods made for another game version, duplicates. **Fix all** activates dependencies, downloads missing ones and sorts. Warnings never block you.
+- **Modsets**: save the active list under a name and switch between setups. Import a `ModsConfig.xml` or a `.txt` list, export to `.txt`. Mods a modset needs but you don't have are downloaded and join the list when they arrive.
+- **Updates**: outdated mods get a badge. Update one from its details, or **Update all**.
+- **Details panel**: preview, author, version, dependencies (click to jump), folder and Workshop page. Delete mods you no longer want.
+- **Play** through Steam or a custom executable with arguments.
+
+### Download
+- **Built-in Workshop browser** with an editable address bar: every mod tile, mod page and collection gets a **+ Add** button. Type a URL, a Workshop ID or search words.
 - **Collections in one click**: a collection lands in your queue as a group. Untick anything you don't want.
 - **Dependencies are added for you**: a mod's *Required items* are queued automatically and shown under it.
-- **Batch download** with SteamCMD, with automatic retries for timeouts.
-- **Update tracking**: the *Installed* tab shows which mods have updates. *Update all* only re-downloads what changed.
-- **Mod lists**: save named lists, import lists (`.txt`, plus RimWorld `.rml`, saves and `ModsConfig.xml`), export to `.txt`.
-- **Per-game profiles**: each game has its own mod folder, queue and lists. Find games by name, from the ones installed on your PC, or paste an AppID, a store link or any Workshop link.
-- **Copy or link**: mods are copied into your game's mod folder, or linked (symlink / junction) to save disk space.
+- **Batch download** with SteamCMD, with automatic retries for timeouts. New mods arrive in **Inactive**.
+- **Import lists into the queue**: `.txt`, plus RimWorld `.rml`, saves and `ModsConfig.xml`. Export the queue to `.txt`.
+
+### Everywhere
+- **Per-game profiles**: each game has its own mod folder, queue and modsets. Find games by name, from the ones installed on your PC, or paste an AppID, a store link or any Workshop link.
+- **Copy, hardlink or link**: mods are copied into the game's mod folder, hardlinked (no extra space, real folders; the cache must be on the same drive) or linked (symlink / junction).
 - **No setup hunt**: SteamCMD is found automatically, or installed for you on first run.
+
+### What each game gets
+
+| | RimWorld | Other games |
+|---|---|---|
+| Turn mods on/off | `ModsConfig.xml` | the mod's folder is in the mod folder or not |
+| Load order, auto-sort | yes | no |
+| Steam subscriptions | on/off and order | listed only (the game loads them itself) |
+| Warnings | all of the above | duplicates only |
 
 ---
 
@@ -43,9 +64,12 @@ python -m jmd
 ## How to use
 
 1. **First run**: the setup finds SteamCMD (or downloads it), then asks which game you mod and where its mod folder is.
-2. **Add mods**: browse the Workshop on the right and click **+ Add**. You can also paste Workshop IDs or links into the box on the left (many at once is fine).
-3. **Download**: press **Download** at the bottom left. Progress shows on each row, and the SteamCMD log is at the bottom.
-4. **Keep them fresh**: open the **Installed** tab, press **Check updates**, then **Update all**.
+2. **Get mods**: switch to **Download** (top bar, or `Ctrl+2`), browse the Workshop and click **+ Add**. You can also paste Workshop IDs or links into the box on the left. Press **Download**.
+3. **Set them up**: switch to **Manage** (`Ctrl+1`). New mods are in **Inactive**: drag them to **Active**, press **Auto-sort** if the game has a load order, then **Apply** (`Ctrl+Enter`).
+4. **Save the setup** as a modset from the menu next to *Active*, and press **Play**.
+5. **Keep them fresh**: Manage checks for updates once per session. Press **Update all** when it shows up.
+
+If RimWorld's `ModsConfig.xml` isn't found (start the game once, or it's in an unusual place), set its path under the profile menu → **Profile settings…**. The game folder and the Play button are set there too.
 
 ### Games that need you to own them
 
@@ -55,13 +79,22 @@ Your password is handed to SteamCMD for that one run and never saved. SteamCMD r
 
 ### Where files go
 
-SteamCMD downloads into the app's own cache (`~/.local/share/jmod/cache` on Linux, `%LOCALAPPDATA%\jmod\cache` on Windows), and mods are then copied or linked into the mod folder of your profile, one folder per Workshop ID. Keeping the cache means updates only fetch what changed.
+SteamCMD downloads into the app's own cache (`~/.local/share/jmod/cache` on Linux, `%LOCALAPPDATA%\jmod\cache` on Windows), and mods are then copied, hardlinked or linked into the mod folder of your profile, one folder per Workshop ID. Keeping the cache means updates only fetch what changed.
+
+For games without a mod config file, a mod you switch off is moved next to the mod folder (`Mods.jmm-disabled/`), or just unlinked when the profile uses links (the cache keeps it). RimWorld mods stay where they are and only `ModsConfig.xml` changes. A backup of it is kept in the profile's `backups/` folder before the first Apply of each session.
 
 ---
 
 ## Adding support for a game
 
-Most games work as-is. For games with their own mod list format, add a small handler in `jmd/handlers/` by subclassing `jmd.handlers.base.GameHandler` (for frozen builds, also add the module to `hiddenimports` in `jmd.spec`). RimWorld's handler is the example.
+Most games work as-is with the generic handler (mods on/off by folder, no load order). To give a game the full treatment, add a handler in `jmd/handlers/` by subclassing `jmd.handlers.base.GameHandler` (for frozen builds, also add the module to `hiddenimports` in `jmd.spec`). It can:
+
+- read and write the game's mod list formats (`import_list`, `export_list`, `import_modset`),
+- say where mods are and what they need (`scan` → `ModEntry` with dependencies and load rules),
+- read and write the active list (`read_active`, `write_active`, `config_path`), with `supports_order` for load order and `tier` for pinned mods,
+- tell the game version and whether the game is running (`game_version`, `process_names`).
+
+RimWorld's handler (`jmd/handlers/rimworld.py` + `jmd/core/rimworld.py`) is the example.
 
 ## Building
 
@@ -86,9 +119,11 @@ A local build bundles your PC's libraries, so it runs on that PC (and on newer s
 ## Changelog
 
 ### Version 2.0 (unreleased)
+- Now **J Mod Manager**: a Manage view with Inactive / Active columns, staged Apply / Revert, load order with auto-sort (RimWorld), warnings with fixes, modsets, update badges, delete, and Play.
+- Hardlink sync mode, editable browser address bar, per-profile settings.
 - New desktop app (PySide6) replaces the terminal scripts.
 - Embedded Workshop browser with **+ Add** buttons on mods and collections.
-- Collections, automatic dependencies, named lists, import/export.
+- Collections, automatic dependencies, list import/export.
 - Update tracking and *Update all*.
 - Per-game profiles, game search and installed-game detection. Profiles can also be made from an AppID, a store link or a Workshop link.
 - SteamCMD auto-install, retries, login fallback for ownership-gated games.
