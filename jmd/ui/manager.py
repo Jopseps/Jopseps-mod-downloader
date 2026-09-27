@@ -47,7 +47,7 @@ class ManagerController(QObject):
         self._debounce.setInterval(300)
         self._debounce.timeout.connect(self.refresh)
         app.profileChanged.connect(self._profile_changed)
-        app.installedChanged.connect(self._debounce.start)
+        app.installedChanged.connect(self._installed_changed)
 
     # === CONTEXT ===
     @property
@@ -70,6 +70,11 @@ class ManagerController(QObject):
         return GameContext(p, dict(self.app.installed), content, list(self._libraries))
 
     # === SCAN ===
+    def _installed_changed(self):
+        """Progress ticks also land here; rescan once the run is over (_finish_run clears run first)."""
+        if self.app.run is None:
+            self._debounce.start()
+
     def _profile_changed(self):
         self._fresh_mtime = True
         self.modset = ""

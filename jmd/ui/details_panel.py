@@ -24,10 +24,13 @@ class Preview(QWidget):
         super().__init__(parent)
         self.pm = None
         self.key = ""
+        self.path = None
         self.setFixedHeight(150)
 
     def set_image(self, key, path):
-        self.key = key
+        if (key, path) == (self.key, self.path):
+            return  # refreshes come on every progress tick; don't reload from disk
+        self.key, self.path = key, path
         self.pm = QPixmap(path) if path and os.path.isfile(path) else None
         self.update()
 

@@ -291,7 +291,7 @@ class GenericHandlerTest(unittest.TestCase):
             # and back on
             self.assertEqual(h.write_active(ctx, list(by_uid.values()), ["111", "handmade"]), [])
             self.assertEqual(sorted(os.listdir(ctx.mod_dir)), ["111", "handmade"])
-            self.assertEqual(os.path.islink(os.path.join(ctx.mod_dir, "111")), mode == "link")
+            self.assertEqual(sync.is_link(os.path.join(ctx.mod_dir, "111")), mode == "link")  # junction on Windows
 
     def test_copy(self):
         self._roundtrip("copy")
