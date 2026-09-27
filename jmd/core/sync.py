@@ -122,6 +122,15 @@ def hardlink(src, dst):
     _remove_stale(src, dst)
 
 
+def remove(path):
+    """Take a synced mod out of the mod folder. A link goes without touching its target;
+    a hardlinked folder only drops its links, the cache keeps the data."""
+    if is_link(path):
+        _unlink(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
+
+
 def sync_item(src, mod_dir, mod_id, mode, on_fallback=None):
     """Put one mod into mod_dir. Hardlink mode falls back to a copy across drives (on_fallback is told)."""
     dst = os.path.join(mod_dir, mod_id)

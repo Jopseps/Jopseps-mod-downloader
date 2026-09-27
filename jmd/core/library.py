@@ -108,3 +108,27 @@ def install_dir(app_id):
         if game["app_id"] == int(app_id):
             return game["install_dir"]
     return ""
+
+
+def process_running(names):
+    """Is any process with one of these executable names running? (RimWorldLinux, RimWorldWin64.exe)"""
+    wanted = {n.lower() for n in names}
+    if IS_WIN:
+        import subprocess
+        try:
+            out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=5,
+                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return any(line.split(",")[0].strip('"').lower() in wanted for line in out.splitlines())
+    # /proc/<pid>/comm is cut at 15 characters
+    short = {n[:15] for n in wanted}
+    try:
+        pids = [p for p in os.listdir("/proc") if p.isdigit()]
+    except OSError:
+        return False
+    for pid in pids:
+        comm = _read(os.path.join("/proc", pid, "comm")).strip().lower()
+        if comm in short:
+            return True
+    return False

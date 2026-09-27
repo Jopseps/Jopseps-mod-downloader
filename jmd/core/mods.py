@@ -81,6 +81,22 @@ class Modset:
         return cls(name=data.get("name", ""), mods=[ModRef.from_dict(m) for m in data.get("mods", [])])
 
 
+_PREFER = {BUILTIN: 0, JMM: 1, LOCAL: 2, STEAM: 3}
+
+
+def index(entries):
+    """One entry per uid when a mod is installed twice (JMM copy + Steam subscription): the game's own
+    copy wins, then ours, then hand-installed, then Steam. → ({uid: ModEntry}, [duplicate uids])"""
+    by_uid, dups = {}, []
+    for e in sorted(entries, key=lambda e: _PREFER.get(e.source, 9)):
+        if e.uid in by_uid:
+            if e.uid not in dups:
+                dups.append(e.uid)
+            continue
+        by_uid[e.uid] = e
+    return by_uid, dups
+
+
 def resolve(refs, entries):
     """Map modset refs onto installed entries. → (active uids in order, missing refs)."""
     by_uid = {e.uid: e for e in entries}
