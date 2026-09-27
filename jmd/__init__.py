@@ -3,6 +3,6 @@
 APP_NAME = "J Mod Downloader"
 APP_SLUG = "jmod"
 AUTHOR = "Yusuf Mert Turan"
-CONTACT = "jopsepsmert@gmail.com"
-SOURCE_URL = "https://github.com/Jopseps/Jopseps-mod-downloader"
+CONTACT = "yusufmertturan@gmail.com"
+SOURCE_URL = "https://github.com/Jopseps/Jopseps-mod-manager"
 __version__ = "2.0.0.dev0"

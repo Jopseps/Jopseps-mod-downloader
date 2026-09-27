@@ -8,21 +8,6 @@ Works on **Windows** and **Linux**.
 
 ---
 
-**0.** Download **SteamCMD** from https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip 
-
-**1.** Extract the zip file then run `steamcmd.exe`, once it completes downloading itself you can close it 
-
-## Configuration
-
-Settings are stored in `config.ini`. You can fill them in before launching, or leave them blank — the app will prompt you to enter them at startup.
-
-```ini
-APPID=294100
-STEAMCMDFOLDER=C:\Users\YourName\Desktop\steamcmd
-MOVE_AFTER_DOWNLOAD=0
-MOVE_PATH=C:\Users\YourName\Desktop\Mods
-```
-
 ## Features
 
 - **Built-in Workshop browser**: every mod tile, mod page and collection gets a **+ Add** button. Click it again (**✓ In list**) to remove.
@@ -39,7 +24,7 @@ MOVE_PATH=C:\Users\YourName\Desktop\Mods
 
 ## Download
 
-Grab the latest build from [Releases](https://github.com/Jopseps/Jopseps-mod-downloader/releases):
+Grab the latest build from [Releases](https://github.com/Jopseps/Jopseps-mod-manager/releases):
 
 - **Windows**: `JModDownloader-Windows.zip`. Extract it, run `JModDownloader.exe`.
 - **Linux**: `JModDownloader-Linux.tar.gz`. Extract it, run `JModDownloader/JModDownloader`.
@@ -134,7 +119,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 You should have received a copy of the GNU Affero General Public License along with this program (see [LICENSE](LICENSE)). If not, see <https://www.gnu.org/licenses/>.
 
-Contact: [jopsepsmert@gmail.com](mailto:jopsepsmert@gmail.com)
+Contact: [yusufmertturan@gmail.com](mailto:yusufmertturan@gmail.com)
 
 ### Third-party
 - [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/) fonts: SIL Open Font License 1.1 (`jmd/assets/fonts/OFL-*.txt`).
