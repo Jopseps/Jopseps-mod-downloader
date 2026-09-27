@@ -34,12 +34,14 @@ Works on **Windows** and **Linux**.
 
 ### What each game gets
 
-| | RimWorld | Other games |
-|---|---|---|
-| Turn mods on/off | `ModsConfig.xml` | the mod's folder is in the mod folder or not |
-| Load order, auto-sort | yes | no |
-| Steam subscriptions | on/off and order | listed only (the game loads them itself) |
-| Warnings | all of the above | duplicates only |
+| | RimWorld | Tabletop Simulator | Other games |
+|---|---|---|---|
+| Turn mods on/off | `ModsConfig.xml` | `<id>.json` in `Mods/Workshop` + `WorkshopFileInfos.json` | the mod's folder is in the mod folder or not |
+| Load order, auto-sort | yes | no | no |
+| Steam subscriptions | on/off and order | the ones TTS saved are listed and switchable | listed only (the game loads them itself) |
+| Warnings | all of the above | duplicates only | duplicates only |
+
+Tabletop Simulator Workshop items are single BSON files: they're converted to the JSON save TTS reads, get a 256×256 thumbnail and an entry in `WorkshopFileInfos.json`, the list TTS reads its Workshop games from.
 
 ---
 
@@ -81,7 +83,7 @@ Your password is handed to SteamCMD for that one run and never saved. SteamCMD r
 
 SteamCMD downloads into the app's own cache (`~/.local/share/jmod/cache` on Linux, `%LOCALAPPDATA%\jmod\cache` on Windows), and mods are then copied, hardlinked or linked into the mod folder of your profile, one folder per Workshop ID. Keeping the cache means updates only fetch what changed.
 
-For games without a mod config file, a mod you switch off is moved next to the mod folder (`Mods.jmm-disabled/`), or just unlinked when the profile uses links (the cache keeps it). RimWorld mods stay where they are and only `ModsConfig.xml` changes. A backup of it is kept in the profile's `backups/` folder before the first Apply of each session.
+For games without a mod config file, a mod you switch off is moved next to the mod folder (`Mods.jmm-disabled/`), or just unlinked when the profile uses links (the cache keeps it). RimWorld mods stay where they are and only `ModsConfig.xml` changes. Tabletop Simulator mods move to `Workshop.jmm-disabled/` with their `WorkshopFileInfos.json` entry. A backup of it is kept in the profile's `backups/` folder before the first Apply of each session.
 
 ---
 
@@ -95,6 +97,10 @@ Most games work as-is with the generic handler (mods on/off by folder, no load o
 - tell the game version and whether the game is running (`game_version`, `process_names`).
 
 RimWorld's handler (`jmd/handlers/rimworld.py` + `jmd/core/rimworld.py`) is the example.
+
+## Self-test
+
+Something off on your PC? Run `JModManager --selftest` (or `python -m jmd.selftest`). It checks folders, sync modes, SteamCMD downloads, the TTS conversion and thumbnails in a temp folder, without touching your profiles or mod folders, and writes the report to `selftest.txt` in the data folder (the Windows build opens it when done).
 
 ## Building
 
@@ -111,6 +117,7 @@ A local build bundles your PC's libraries, so it runs on that PC (and on newer s
 **NOTE:** Theoretically, it can download from any workshop. However, for games that have separate workshop IDs for singleplayer and multiplayer (or use a dedicated server, like Stonehearth), it might not be able to download from them.
 
 - **RimWorld**  `294100`
+- **Tabletop Simulator** `286160`
 - **Project Zomboid** `108600`
 - **Half Life 2** `220`
 
