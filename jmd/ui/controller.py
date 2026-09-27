@@ -11,6 +11,7 @@ from jmd.core import models, resolver, steam_api, steamcmd
 from jmd.core.downloader import Downloader
 from jmd.core.models import Group, InstalledRecord, Profile, QueueState
 from jmd.core.store import Store
+from jmd.ui import thumbs
 from jmd.ui.async_task import EventPipe, run_async
 from jmd.ui.tokens import STATUS
 
@@ -39,6 +40,7 @@ class AppController(QObject):
         self.store = store or Store()
         self.settings = self.store.load_settings()
         self.profiles = self.store.load_profiles()
+        self._upgrade_handlers()
         self.profile = None
         self.queue = QueueState()
         self.installed = {}
@@ -61,6 +63,18 @@ class AppController(QObject):
             self.switch_profile(start.id, quiet=True)
 
     # === PROFILES ===
+    def _upgrade_handlers(self):
+        """A profile made before its game got a handler moves to it once (it was saved as 'generic')."""
+        changed = False
+        for p in self.profiles:
+            h = handlers.for_app(p.app_id)
+            if p.handler == "generic" and h.key != "generic":
+                p.handler = h.key
+                p.sync_mode = h.fixed_sync_mode or p.sync_mode
+                changed = True
+        if changed:
+            self.store.save_profiles(self.profiles)
+
     @property
     def handler(self):
         if not self.profile:
@@ -71,6 +85,8 @@ class AppController(QObject):
         pid = Profile.slug_for(name, app_id)
         existing = next((p for p in self.profiles if p.id == pid), None)
         handler = handlers.for_app(app_id)
+        mod_dir = os.path.normpath(mod_dir) if mod_dir else ""
+        sync_mode = handler.fixed_sync_mode or sync_mode
         if existing:
             existing.mod_dir, existing.sync_mode = mod_dir, sync_mode
             profile = existing
@@ -308,13 +324,24 @@ class AppController(QObject):
             return ""
         return paths.ensure(paths.cache_dir())
 
-    def _sync_fn(self):
+    def _sync_fn(self, sources):
+        """sources: queue items or installed records. Their metadata is copied here, on the UI thread,
+        because the hook runs on the download thread."""
         profile = self.profile
         handler = self.handler
+        meta = {s.id: {"title": s.title, "preview_url": s.preview_url, "time_updated": s.time_updated,
+                       "save_png": self._save_png} for s in sources}
 
         def do_sync(mod_id, content_path):
-            return handler.place_download(profile, mod_id, content_path, self._hardlink_fallback)
+            return handler.place_download(profile, mod_id, content_path, self._hardlink_fallback, meta.get(mod_id))
         return do_sync
+
+    def _save_png(self, url, path):
+        """Runs on the download thread."""
+        try:
+            thumbs.save_png(url, path)
+        except Exception as e:  # noqa: BLE001 - thumbnail is optional
+            self.logLine.emit(f"Thumbnail failed ({e})", LOG_WARN)
 
     def _hardlink_fallback(self, reason):
         """Runs on the download thread; signals queue over to the UI thread."""
@@ -338,7 +365,7 @@ class AppController(QObject):
             item.status, item.error, item.progress, item.attempt = models.QUEUED, "", 0.0, 0
         ids = [i.id for i in items]
         dl = Downloader(exe, self.install_dir(), self.profile.app_id, [(i.id, i.file_size) for i in items],
-                        self._pipe, sync=self._sync_fn(), retries=self.settings.retries,
+                        self._pipe, sync=self._sync_fn(items), retries=self.settings.retries,
                         username=username, password=password, guard=guard)
         self.run = {"downloader": dl, "ids": ids, "done": 0, "kind": kind, "profile": self.profile.id}
         who = f"user '{username}'" if username else "anonymous"
@@ -540,7 +567,7 @@ class AppController(QObject):
             return
         self.updating = {r.id: 0.0 for r in recs}
         dl = Downloader(exe, self.install_dir(), self.profile.app_id, [(r.id, r.file_size) for r in recs],
-                        self._pipe, sync=self._sync_fn(), retries=self.settings.retries)
+                        self._pipe, sync=self._sync_fn(recs), retries=self.settings.retries)
         self.run = {"downloader": dl, "ids": [r.id for r in recs], "done": 0, "kind": "update",
                     "profile": self.profile.id}
         self._log(f"Updating {len(recs)} items for AppID {self.profile.app_id}")

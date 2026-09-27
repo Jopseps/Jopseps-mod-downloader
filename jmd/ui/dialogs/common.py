@@ -217,6 +217,9 @@ class GamePicker(QWidget):
         sync_col = QVBoxLayout()
         sync_col.setSpacing(6)
         sync_col.addWidget(label("Sync mode", "section"))
+        self.sync_fixed = label("", "faint", wrap=True)
+        self.sync_fixed.hide()
+        sync_col.addWidget(self.sync_fixed)
         self.copy_card = OptionCard("Copy (recommended)", "Copies each mod into the mod folder.")
         self.hard_card = OptionCard("Hardlink", "No extra space, real folders. Same drive as the cache.")
         self.link_card = OptionCard("Link", "Symlink / junction. Saves disk space.")
@@ -242,6 +245,7 @@ class GamePicker(QWidget):
         sync_col.addWidget(self.hard_card)
         sync_col.addWidget(self.link_card)
         sync_col.addWidget(self.link_warn)
+        self.sync_cards = (self.copy_card, self.hard_card, self.link_card)
         dl.addLayout(sync_col)
         self.handler_lbl = QLabel()
         self.handler_lbl.setObjectName("Card")
@@ -357,6 +361,12 @@ class GamePicker(QWidget):
             b.setChecked(b.game["app_id"] == app_id)
         self.group.setExclusive(True)
         self.handler = handlers.for_app(app_id)
+        fixed = self.handler.fixed_sync_mode
+        for card in self.sync_cards:
+            card.setVisible(not fixed)
+        self.link_warn.setVisible(not fixed and self.link_card.isChecked())
+        self.sync_fixed.setText(f"{fixed.capitalize()}: the {self.handler.name} handler converts files." if fixed else "")
+        self.sync_fixed.setVisible(bool(fixed))
         game_dir = next((g.get("install_dir", "") for g in self.detected if g["app_id"] == app_id), "")
         if not game_dir:
             game_dir = library.install_dir(app_id)
@@ -383,14 +393,17 @@ class GamePicker(QWidget):
         start = self.folder.text() or os.path.expanduser("~")
         path = QFileDialog.getExistingDirectory(self, "Mod folder", start)
         if path:
-            self.folder.setText(path)
+            self.folder.setText(os.path.normpath(path))
 
     def sync_mode(self):
+        if getattr(self, "handler", None) and self.handler.fixed_sync_mode:
+            return self.handler.fixed_sync_mode
         if self.link_card.isChecked():
             return "link"
         return "hardlink" if self.hard_card.isChecked() else "copy"
 
     def result(self):
         g = self.selected
-        return {"name": g["name"], "app_id": int(g["app_id"]), "mod_dir": self.folder.text().strip(),
+        mod_dir = self.folder.text().strip()
+        return {"name": g["name"], "app_id": int(g["app_id"]), "mod_dir": os.path.normpath(mod_dir) if mod_dir else "",
                 "sync_mode": self.sync_mode(), "capsule_url": g.get("image") or steam_api.capsule_url(g["app_id"])}

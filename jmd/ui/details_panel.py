@@ -181,7 +181,7 @@ class DetailsPanel(QFrame):
             else:
                 lines.append(f"<span style='color:{STATUS['failed'][1]}'>✗ {name} (not installed)</span>")
         self.deps.setText("<br>".join(lines))
-        self.folder_btn.setEnabled(bool(e.path) and os.path.isdir(e.path))
+        self.folder_btn.setEnabled(bool(e.path) and os.path.exists(e.path))
         self.web_btn.setVisible(bool(e.wid))
         pct = self.mgr.update_progress(e.uid)
         self.update_btn.setVisible(self.mgr.outdated(e.uid) or pct is not None)
@@ -204,7 +204,9 @@ class DetailsPanel(QFrame):
     def _open_folder(self):
         e = self.mgr.by_uid.get(self.uid)
         if e and e.path:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(e.path))
+            # file-based mods (TTS <id>.json) open their folder
+            folder = e.path if os.path.isdir(e.path) else os.path.dirname(e.path)
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     def _open_web(self):
         e = self.mgr.by_uid.get(self.uid)

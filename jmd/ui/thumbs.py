@@ -7,6 +7,7 @@ from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 from jmd import paths
+from jmd.core import steam_api
 from jmd.ui.async_task import run_async
 
 
@@ -15,6 +16,22 @@ def _sized(url, px):
     if "steamusercontent.com" in url and "?" not in url:
         return f"{url}?imw={px}&imh={px}&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true"
     return url
+
+
+def _square(img, px):
+    side = min(img.width(), img.height())
+    img = img.copy(QRect((img.width() - side) // 2, (img.height() - side) // 2, side, side))
+    return img.scaled(px, px, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+
+def save_png(url, path, px=256):
+    """Fetch a preview and write it as a square PNG (TTS's <id>.png). Blocking: call from a worker.
+    QImage, not QPixmap, so it's safe off the UI thread."""
+    img = QImage.fromData(steam_api.fetch_bytes(url))
+    if img.isNull():
+        raise ValueError(f"Not an image: {url}")
+    if not _square(img, px).save(path, "PNG"):
+        raise OSError(f"Couldn't write {path}")
 
 
 class ThumbCache(QObject):
@@ -51,9 +68,7 @@ class ThumbCache(QObject):
         img = QImage.fromData(bytes(data))
         if img.isNull():
             return
-        side = min(img.width(), img.height())
-        img = img.copy(QRect((img.width() - side) // 2, (img.height() - side) // 2, side, side))
-        img = img.scaled(self.size, self.size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        img = _square(img, self.size)
         img.save(os.path.join(self.folder, f"{key}.png"))
         self._mem[key] = QPixmap.fromImage(img)
         self.ready.emit(key)

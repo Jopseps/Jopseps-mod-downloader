@@ -3,13 +3,12 @@
 """Manage view state: installed mods, the active list on disk, and the staged edit of it. Apply writes it."""
 import os
 import shlex
-import shutil
 
 from PySide6.QtCore import QObject, QProcess, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 
-from jmd.core import library, mods, rimworld, sorting, steamcmd, sync, validate
-from jmd.handlers.base import GameContext, disabled_dir
+from jmd.core import library, mods, rimworld, sorting, steamcmd, validate
+from jmd.handlers.base import GameContext
 from jmd.ui.async_task import run_async
 from jmd.ui.controller import LOG_ERR
 
@@ -367,16 +366,7 @@ class ManagerController(QObject):
                 errors.append(f"{e.title} is downloading")
                 continue
             try:
-                cache = ctx.cache_path(e.wid) if e.source == mods.JMM else ""
-                folder = os.path.basename(e.path)
-                places = [e.path]
-                if ctx.mod_dir:
-                    places += [os.path.join(ctx.mod_dir, folder), os.path.join(disabled_dir(ctx.mod_dir), folder)]
-                for path in dict.fromkeys(places):
-                    if path != cache and os.path.lexists(path):
-                        sync.remove(path)
-                if cache:
-                    shutil.rmtree(cache)
+                self.handler.remove(ctx, e)
                 if e.wid in app.installed and e.source == mods.JMM:
                     del app.installed[e.wid]
                 done.append(uid)

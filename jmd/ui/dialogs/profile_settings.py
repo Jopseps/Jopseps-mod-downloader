@@ -14,6 +14,11 @@ def _home(path):
     return path.replace(os.path.expanduser("~"), "~")
 
 
+def _path(edit):
+    text = edit.text().strip()
+    return os.path.normpath(text) if text else ""
+
+
 class ProfileSettingsDialog(Dialog):
     def __init__(self, controller, mgr, parent=None):
         p = controller.profile
@@ -61,7 +66,9 @@ class ProfileSettingsDialog(Dialog):
         self.exe_card.toggled.connect(self._launch_mode)
         self._launch_mode(self.exe_card.isChecked())
 
-        mode = label(f"Sync mode: {p.sync_mode.capitalize()}. Set when the profile was created.", "faint", wrap=True)
+        why = (f"the {handler.name} handler converts files" if handler.fixed_sync_mode
+               else "set when the profile was created")
+        mode = label(f"Sync mode: {p.sync_mode.capitalize()}, {why}.", "faint", wrap=True)
         b.addWidget(mode)
 
         self.footer_layout.addStretch(1)
@@ -78,7 +85,9 @@ class ProfileSettingsDialog(Dialog):
         col.addWidget(label(title, "section"))
         row = QHBoxLayout()
         row.setSpacing(6)
-        edit = QLineEdit(value)
+        edit = QLineEdit(os.path.normpath(value) if value else "")
+        edit.setCursorPosition(0)  # long paths show their drive, not their tail
+        edit.setToolTip(edit.text())
         edit.setProperty("mono", "true")
         edit.setPlaceholderText(placeholder)
         browse = button("Browse…")
@@ -100,7 +109,8 @@ class ProfileSettingsDialog(Dialog):
         else:
             path, _ = QFileDialog.getOpenFileName(self, title, start, filters)
         if path:
-            edit.setText(path)
+            edit.setText(os.path.normpath(path))
+            edit.setCursorPosition(0)
 
     def _launch_mode(self, exe):
         for w in (self.exe, self.exe.browse, self.args):
@@ -108,12 +118,12 @@ class ProfileSettingsDialog(Dialog):
 
     def _save(self):
         p = self.profile
-        p.mod_dir = self.mod_dir.text().strip()
-        p.game_dir = self.game_dir.text().strip()
+        p.mod_dir = _path(self.mod_dir)
+        p.game_dir = _path(self.game_dir)
         if self.config is not None:
-            p.config_path = self.config.text().strip()
+            p.config_path = _path(self.config)
         p.launch_mode = "exe" if self.exe_card.isChecked() else "steam"
-        p.exe_path = self.exe.text().strip()
+        p.exe_path = _path(self.exe)
         p.exe_args = self.args.text().strip()
         self.ctl.save_profile(p)
         self.mgr.refresh()
