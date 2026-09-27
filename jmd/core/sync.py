@@ -1,5 +1,6 @@
 # Copyright (C) 2025-2026 Yusuf Mert Turan
 # SPDX-License-Identifier: AGPL-3.0-or-later
+import errno
 import filecmp
 import os
 import shutil
@@ -10,6 +11,13 @@ IS_WIN = sys.platform == "win32"
 
 class SyncError(Exception):
     pass
+
+
+class CrossDevice(SyncError):
+    """Hardlinks can't span drives / filesystems."""
+
+
+_WIN_NOT_SAME_DEVICE = 17
 
 
 def is_link(path):
@@ -46,10 +54,16 @@ def mirror_copy(src, dst):
         for name in files:
             s = os.path.join(root, name)
             d = os.path.join(target_root, name)
+            if os.path.exists(d) and os.path.samefile(s, d):
+                os.remove(d)  # left over from hardlink mode: copy2 would refuse, and edits would reach the cache
             if not os.path.exists(d) or not filecmp.cmp(s, d, shallow=True):
                 shutil.copy2(s, d)
 
-    # === REMOVE STALE ===
+    _remove_stale(src, dst)
+
+
+def _remove_stale(src, dst):
+    """Delete what vanished upstream."""
     for root, dirs, files in os.walk(dst, topdown=False):
         rel = os.path.relpath(root, dst)
         source_root = src if rel == "." else os.path.join(src, rel)
@@ -80,10 +94,46 @@ def link(src, dst):
         os.symlink(src, dst, target_is_directory=True)
 
 
-def sync_item(src, mod_dir, mod_id, mode):
+def hardlink(src, dst):
+    """Make dst a real folder whose files are hardlinks to src's: no extra space, and games that skip
+    symlinked folders still load it. Raises CrossDevice when src and dst are on different filesystems."""
+    if not os.path.isdir(src):
+        raise SyncError(f"Source missing: {src}")
+    if is_link(dst):
+        _unlink(dst)
+    os.makedirs(dst, exist_ok=True)
+    for root, dirs, files in os.walk(src):
+        rel = os.path.relpath(root, src)
+        target_root = dst if rel == "." else os.path.join(dst, rel)
+        os.makedirs(target_root, exist_ok=True)
+        for name in files:
+            s = os.path.join(root, name)
+            d = os.path.join(target_root, name)
+            if os.path.exists(d):
+                if os.path.samefile(s, d):
+                    continue
+                os.remove(d)  # a copy, or an old link SteamCMD replaced in the cache
+            try:
+                os.link(s, d)
+            except OSError as e:
+                if e.errno == errno.EXDEV or getattr(e, "winerror", None) == _WIN_NOT_SAME_DEVICE:
+                    raise CrossDevice(f"{src} and {dst} are on different drives") from e
+                raise
+    _remove_stale(src, dst)
+
+
+def sync_item(src, mod_dir, mod_id, mode, on_fallback=None):
+    """Put one mod into mod_dir. Hardlink mode falls back to a copy across drives (on_fallback is told)."""
     dst = os.path.join(mod_dir, mod_id)
     if mode == "link":
         link(src, dst)
+    elif mode == "hardlink":
+        try:
+            hardlink(src, dst)
+        except CrossDevice as e:
+            if on_fallback:
+                on_fallback(str(e))
+            mirror_copy(src, dst)
     else:
         mirror_copy(src, dst)
     return dst

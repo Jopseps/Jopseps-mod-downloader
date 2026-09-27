@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 
-from jmd.core import models, mods, rimworld, sorting, validate
+from jmd.core import models, mods, rimworld, sorting, sync, validate
 from jmd.core.mods import Dep, ModEntry, ModRef, Modset
 from jmd.core.store import Store
 
@@ -194,6 +194,53 @@ class ModsetTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(t, "profiles", "rim", "lists", "Old list.json.bak")))
             st.save_pending("rim", ["1", "2", "1"])
             self.assertEqual(st.load_pending("rim"), ["1", "2"])
+
+
+class HardlinkTest(unittest.TestCase):
+    def _src(self, t):
+        src = os.path.join(t, "cache", "42")
+        os.makedirs(os.path.join(src, "About"))
+        for rel, body in (("About/About.xml", "a"), ("big.bin", "b")):
+            with open(os.path.join(src, rel), "w") as f:
+                f.write(body)
+        return src
+
+    def test_links_relinks_and_cleans(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = self._src(t)
+            dst = sync.sync_item(src, os.path.join(t, "Mods"), "42", "hardlink")
+            self.assertFalse(os.path.islink(dst))
+            self.assertTrue(os.path.samefile(os.path.join(src, "big.bin"), os.path.join(dst, "big.bin")))
+            # SteamCMD replaces a file (new inode) and drops another
+            os.remove(os.path.join(src, "big.bin"))
+            with open(os.path.join(src, "big.bin"), "w") as f:
+                f.write("v2")
+            os.remove(os.path.join(src, "About", "About.xml"))
+            sync.sync_item(src, os.path.join(t, "Mods"), "42", "hardlink")
+            self.assertTrue(os.path.samefile(os.path.join(src, "big.bin"), os.path.join(dst, "big.bin")))
+            self.assertFalse(os.path.exists(os.path.join(dst, "About", "About.xml")))
+            # switching the profile back to copy breaks the links
+            sync.sync_item(src, os.path.join(t, "Mods"), "42", "copy")
+            self.assertFalse(os.path.samefile(os.path.join(src, "big.bin"), os.path.join(dst, "big.bin")))
+            with open(os.path.join(dst, "big.bin")) as f:
+                self.assertEqual(f.read(), "v2")
+
+    def test_cross_device_falls_back_to_copy(self):
+        import errno
+        with tempfile.TemporaryDirectory() as t:
+            src = self._src(t)
+            real, told = os.link, []
+
+            def no_link(*_a, **_k):
+                raise OSError(errno.EXDEV, "Invalid cross-device link")
+            os.link = no_link
+            try:
+                dst = sync.sync_item(src, os.path.join(t, "Mods"), "42", "hardlink", on_fallback=told.append)
+            finally:
+                os.link = real
+            self.assertEqual(len(told), 1)
+            self.assertTrue(os.path.isfile(os.path.join(dst, "big.bin")))
+            self.assertFalse(os.path.samefile(os.path.join(src, "big.bin"), os.path.join(dst, "big.bin")))
 
 
 if __name__ == "__main__":

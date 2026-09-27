@@ -51,6 +51,7 @@ class AppController(QObject):
         self.run = None               # {"downloader", "ids", "done", "kind"}
         self._pending_login = None
         self._visited_deps = set()
+        self._hardlink_warned = False
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
         self._save_timer.setInterval(400)
@@ -333,10 +334,17 @@ class AppController(QObject):
         def do_sync(mod_id, content_path):
             if not profile.mod_dir:
                 return content_path
-            dst = sync.sync_item(content_path, profile.mod_dir, mod_id, profile.sync_mode)
+            dst = sync.sync_item(content_path, profile.mod_dir, mod_id, profile.sync_mode, self._hardlink_fallback)
             handler.post_sync(profile.mod_dir, mod_id)
             return dst
         return do_sync
+
+    def _hardlink_fallback(self, reason):
+        """Runs on the download thread; signals queue over to the UI thread."""
+        if not self._hardlink_warned:
+            self._hardlink_warned = True
+            self.toast.emit("Hardlink needs the cache on the same drive. Copying instead.")
+        self.logLine.emit(f"Hardlink unavailable ({reason}), copied instead", LOG_WARN)
 
     def download(self, items=None, username="", password="", guard="", kind="queue"):
         if self.run:
