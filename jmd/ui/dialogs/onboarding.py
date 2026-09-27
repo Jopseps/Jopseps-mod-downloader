@@ -52,7 +52,7 @@ class StepDot(QWidget):
 
 class OnboardingDialog(Dialog):
     def __init__(self, controller, thumbs, parent=None):
-        super().__init__("Set up J Mod Downloader", 760, parent)
+        super().__init__("Set up J Mod Manager", 760, parent)
         self.ctl = controller
         self.step = 1
         self.exe = steamcmd.locate(controller.settings.steamcmd_path)
@@ -63,7 +63,7 @@ class OnboardingDialog(Dialog):
         hl = QVBoxLayout(head)
         hl.setContentsMargins(16, 16, 16, 14)
         hl.setSpacing(12)
-        hl.addWidget(label("Set up J Mod Downloader", "display"))
+        hl.addWidget(label("Set up J Mod Manager", "display"))
         dots = QHBoxLayout()
         dots.setSpacing(10)
         self.dots = [StepDot(1, "SteamCMD", True), StepDot(2, "First profile", True), StepDot(3, "Done", False)]
@@ -101,7 +101,7 @@ class OnboardingDialog(Dialog):
         l.setContentsMargins(20, 24, 20, 24)
         l.setSpacing(14)
         l.addWidget(label("SteamCMD", "heading"))
-        intro = label("J Mod Downloader fetches Workshop items with SteamCMD, Valve's command-line client.", "dim", wrap=True)
+        intro = label("J Mod Manager fetches Workshop items with SteamCMD, Valve's command-line client.", "dim", wrap=True)
         intro.setStyleSheet(f"color:{C['text-dim']};font-size:13px;")
         l.addWidget(intro)
         self.cmd_states = QStackedWidget()

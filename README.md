@@ -1,10 +1,10 @@
-# J Mod Downloader
+# J Mod Manager
 
 Download Steam Workshop mods for any game, without subscribing in Steam. Browse the Workshop inside the app, click **+ Add** on mods or whole collections, then download everything in one batch with SteamCMD.
 
 Works on **Windows** and **Linux**.
 
-![J Mod Downloader](images/screenshot.png)
+![J Mod Manager](images/screenshot.png)
 
 ---
 
@@ -26,8 +26,8 @@ Works on **Windows** and **Linux**.
 
 Grab the latest build from [Releases](https://github.com/Jopseps/Jopseps-mod-manager/releases):
 
-- **Windows**: `JModDownloader-Windows.zip`. Extract it, run `JModDownloader.exe`.
-- **Linux**: `JModDownloader-Linux.tar.gz`. Extract it, run `JModDownloader/JModDownloader`.
+- **Windows**: `JModManager-Windows.zip`. Extract it, run `JModManager.exe`.
+- **Linux**: `JModManager-Linux.tar.gz`. Extract it, run `JModManager/JModManager`.
 
 ### Run from source
 
@@ -67,8 +67,8 @@ Most games work as-is. For games with their own mod list format, add a small han
 
 Only Python 3 is needed. The scripts create a `.venv`, install the dependencies there, run the tests and build.
 
-- **Linux:** `./build.sh` → `dist/JModDownloader/JModDownloader` + `dist/JModDownloader-Linux.tar.gz`
-- **Windows:** double-click `build.bat` → `dist\JModDownloader\JModDownloader.exe` + `dist\JModDownloader-Windows.zip`
+- **Linux:** `./build.sh` → `dist/JModManager/JModManager` + `dist/JModManager-Linux.tar.gz`
+- **Windows:** double-click `build.bat` → `dist\JModManager\JModManager.exe` + `dist\JModManager-Windows.zip`
 
 A local build bundles your PC's libraries, so it runs on that PC (and on newer systems). Tagging `v*` builds the Windows and Linux releases through GitHub Actions on older runners, so they run on more systems.
 
@@ -111,7 +111,7 @@ A local build bundles your PC's libraries, so it runs on that PC (and on newer s
 
 ## License
 
-**J Mod Downloader**: Copyright (C) 2025-2026 Yusuf Mert Turan
+**J Mod Manager**: Copyright (C) 2025-2026 Yusuf Mert Turan
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

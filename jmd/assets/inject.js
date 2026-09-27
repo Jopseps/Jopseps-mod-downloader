@@ -1,6 +1,6 @@
 // Copyright (C) 2025-2026 Yusuf Mert Turan
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// J Mod Downloader: injects "+ Add" / "✓ In list" pills into Steam Workshop pages.
+// J Mod Manager: injects "+ Add" / "✓ In list" pills into Steam Workshop pages.
 // Runs in an isolated JS world (the page's own scripts can't reach the bridge).
 // Steam markup changes break things here first: every selector lives in SELECTORS.
 (function(){
@@ -91,7 +91,7 @@
                             : (pill.dataset.jmdLabel === 'collection' ? addCollectionLabel() : (lg ? 'Add to list' : 'Add'));
         const icon = inList ? CHECK : PLUS;
         pill.innerHTML = lg ? icon.replace(/"11"/g, '"13"') + text : icon + text;
-        pill.title = inList ? 'In your list. Click to remove.' : 'Add to J Mod Downloader';
+        pill.title = inList ? 'In your list. Click to remove.' : 'Add to J Mod Manager';
     }
 
     function addCollectionLabel(){

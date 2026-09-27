@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.steampowered.com/ISteamRemoteStorage"
-UA = "JModDownloader/2.0 (+https://github.com/Jopseps/Jopseps-mod-manager)"
+UA = "JModManager/2.0 (+https://github.com/Jopseps/Jopseps-mod-manager)"
 BATCH = 100
 TIMEOUT = 20
 
