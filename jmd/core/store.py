@@ -6,6 +6,7 @@ import re
 from dataclasses import asdict
 
 from jmd import paths
+from jmd.core.mods import ModRef, Modset
 from jmd.core.models import InstalledRecord, Profile, QueueState, Settings
 
 
@@ -102,3 +103,57 @@ class Store:
     def save_installed(self, profile_id, records):
         _write_json(self._path("profiles", profile_id, "installed.json"),
                     {mod_id: asdict(rec) for mod_id, rec in records.items()})
+
+    # === MODSETS ===
+    def modset_names(self, profile_id):
+        folder = self._path("profiles", profile_id, "modsets")
+        if not os.path.isdir(folder):
+            return []
+        names = []
+        for f in os.listdir(folder):
+            if f.endswith(".json"):
+                names.append(_read_json(os.path.join(folder, f), {}).get("name") or f[:-5])
+        return sorted(names, key=str.lower)
+
+    def save_modset(self, profile_id, modset):
+        _write_json(self._path("profiles", profile_id, "modsets", _safe_name(modset.name) + ".json"), modset.to_dict())
+
+    def load_modset(self, profile_id, name):
+        data = _read_json(self._path("profiles", profile_id, "modsets", _safe_name(name) + ".json"), None)
+        return Modset.from_dict(data) if data else None
+
+    def delete_modset(self, profile_id, name):
+        try:
+            os.remove(self._path("profiles", profile_id, "modsets", _safe_name(name) + ".json"))
+        except OSError:
+            pass
+
+    def migrate_lists(self, profile_id):
+        """Old named download lists → modsets of their checked mods. Originals are kept as .bak. → names."""
+        folder = self._path("profiles", profile_id, "lists")
+        if not os.path.isdir(folder):
+            return []
+        done = []
+        for f in sorted(os.listdir(folder)):
+            if not f.endswith(".json"):
+                continue
+            path = os.path.join(folder, f)
+            data = _read_json(path, None)
+            if data is None:
+                continue
+            queue = QueueState.from_list(data.get("nodes", []))
+            name = data.get("name") or f[:-5]
+            refs = [ModRef(wid=i.id, name=i.title) for i in queue.items() if i.checked and not i.blocked]
+            if name not in self.modset_names(profile_id):
+                self.save_modset(profile_id, Modset(name=name, mods=refs))
+                done.append(name)
+            os.replace(path, path + ".bak")
+        return done
+
+    # === PENDING ACTIVATION ===
+    def load_pending(self, profile_id):
+        """Workshop ids a modset is waiting on: activated as soon as their download lands."""
+        return list(_read_json(self._path("profiles", profile_id, "pending_activate.json"), []))
+
+    def save_pending(self, profile_id, wids):
+        _write_json(self._path("profiles", profile_id, "pending_activate.json"), list(dict.fromkeys(wids)))

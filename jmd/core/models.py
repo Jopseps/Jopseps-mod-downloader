@@ -85,9 +85,14 @@ class Profile:
     name: str
     app_id: int
     mod_dir: str = ""
-    sync_mode: str = "copy"  # copy | link
+    sync_mode: str = "copy"  # copy | link | hardlink
     handler: str = "generic"
     capsule_url: str = ""
+    game_dir: str = ""       # override; empty = found through Steam libraries
+    config_path: str = ""    # override for the game's mod config (RimWorld ModsConfig.xml)
+    launch_mode: str = "steam"  # steam | exe
+    exe_path: str = ""
+    exe_args: str = ""
 
     @staticmethod
     def slug_for(name, app_id):
@@ -103,6 +108,7 @@ class Settings:
     username: str = ""
     current_profile: str = ""
     onboarded: bool = False
+    mode: str = "download"  # manage | download, last used
 
 
 @dataclass
