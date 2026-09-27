@@ -32,6 +32,8 @@ class IdsTest(unittest.TestCase):
         self.assertEqual(r("rimworld sos2", 294100),
                          "https://steamcommunity.com/workshop/browse/?appid=294100&searchtext=rimworld+sos2&browsesort=textsearch")
         self.assertEqual(r("harmony"), "https://steamcommunity.com/search/?text=harmony")
+        self.assertEqual(r("1.6", 294100), "https://steamcommunity.com/workshop/browse/?appid=294100&searchtext=1.6&browsesort=textsearch")
+        self.assertEqual(r("localhost:8080/x"), "https://localhost:8080/x")
         self.assertIsNone(r("   "))
 
     def test_game_ref(self):

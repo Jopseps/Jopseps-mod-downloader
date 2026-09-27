@@ -7,7 +7,7 @@ _ID_PARAM = re.compile(r"[?&]id=(\d+)|CommunityFilePage/(\d+)")
 _BARE_ID = re.compile(r"^\d{3,}$")
 _APP_URL = re.compile(r"/app/(\d+)|[?&]appid=(\d+)|steam://(?:store|run|rungameid)/(\d+)")
 _TOKEN_SPLIT = re.compile(r"[\s,;]+")
-_DOMAIN = re.compile(r"^(localhost|[\w-]+(\.[\w-]+)+)(:\d+)?([/?#]\S*)?$")
+_DOMAIN = re.compile(r"^(localhost|[\w-]+(\.[\w-]+)*\.[a-zA-Z]{2,6})(:\d+)?([/?#]\S*)?$")
 
 
 def extract_mod_id(raw):
