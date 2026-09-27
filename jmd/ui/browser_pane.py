@@ -236,12 +236,24 @@ class BrowserPane(QFrame):
         else:
             self._url_changed(QUrl(target))
 
-    def _url_changed(self, url):
-        self.url = url
-        self.lock.setVisible(url.scheme() == "https")
+    def _render_url(self):
+        url = self.url
         self.url_host.setText(url.host() or url.toString())
         path = (url.path() + (("?" + url.query()) if url.query() else "")) if url.host() else ""
         self.url_path.setText(self.url_path.fontMetrics().elidedText(path, Qt.ElideRight, max(80, self.url_path.width())))
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._render_url()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        QTimer.singleShot(0, self._render_url)  # widths are final once the layout has run
+
+    def _url_changed(self, url):
+        self.url = url
+        self.lock.setVisible(url.scheme() == "https")
+        self._render_url()
         if self.view:
             hist = self.view.history()
             self.back.setEnabled(hist.canGoBack())

@@ -3,7 +3,8 @@
 from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtCore import QUrl
-from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QSplitter,
+from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QMessageBox, QPushButton,
+                               QSplitter,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 from jmd import APP_NAME
@@ -15,7 +16,7 @@ from jmd.ui.manager import ManagerController
 from jmd.ui.queue_panel import LeftPanel
 from jmd.ui.thumbs import ThumbCache
 from jmd.ui.tokens import C, SIZE
-from jmd.ui.widgets import Toast, icon_button
+from jmd.ui.widgets import Toast, button, icon_button
 
 
 class ProfileButton(QPushButton):
@@ -116,6 +117,10 @@ class MainWindow(QMainWindow):
         self.mode_switch.group.idClicked.connect(self.set_mode)
         tl.addWidget(self.mode_switch)
         tl.addStretch(1)
+        self.play_btn = button("Play", size="sm", icon="play", icon_color="#6fbf4a", icon_size=12)
+        self.play_btn.setToolTip("Start the game (Profile settings: Steam or a custom exe)")
+        self.play_btn.clicked.connect(self.play)
+        tl.addWidget(self.play_btn)
         tl.addWidget(self.settings_btn)
         root.addWidget(top)
 
@@ -123,6 +128,7 @@ class MainWindow(QMainWindow):
         self.mgr = ManagerController(controller, self)
         self.manage = ManageView(self.mgr, self.thumbs)
         self.manage.webRequested.connect(self.open_web)
+        self.manage.banner.linkActivated.connect(lambda _: self.open_profile_settings())
         self.left = LeftPanel(controller, self.thumbs)
         self.left.loginRequested.connect(self.open_login)
         self.browser = BrowserPane(controller)
@@ -173,6 +179,7 @@ class MainWindow(QMainWindow):
 
     def refresh_profile(self):
         p = self.ctl.profile
+        self.play_btn.setEnabled(p is not None)
         if p:
             self.profile_btn.name.setText(p.name)
             self.profile_btn.appid.setText(str(p.app_id))
@@ -192,6 +199,8 @@ class MainWindow(QMainWindow):
             act.setIcon(check if self.ctl.profile and p.id == self.ctl.profile.id else QIcon(self._cap_pixmap(p)))
         if self.ctl.profiles:
             menu.addSeparator()
+        if self.ctl.profile:
+            menu.addAction(icons.icon("settings", C["text"], 14), "Profile settings…", self.open_profile_settings)
         menu.addAction(icons.icon("plus", C["text"], 14), "New profile…", self.new_profile)
         menu.exec(self.profile_btn.mapToGlobal(self.profile_btn.rect().bottomLeft()) + QPoint(0, 4))
 
@@ -200,6 +209,30 @@ class MainWindow(QMainWindow):
         from jmd.ui.dialogs.profile import ProfileDialog
         dlg = ProfileDialog(self.ctl, self.thumbs, self)
         dlg.exec()
+
+    def open_profile_settings(self):
+        if not self.ctl.profile:
+            return
+        from jmd.ui.dialogs.profile_settings import ProfileSettingsDialog
+        ProfileSettingsDialog(self.ctl, self.mgr, self).exec()
+
+    def play(self):
+        m = self.mgr
+        if m.dirty and not m.apply_block:
+            box = QMessageBox(self)
+            box.setWindowTitle("Unsaved changes")
+            box.setIcon(QMessageBox.Question)
+            box.setText(f"The active list has {m.changes.count} unapplied changes. The game would load the old list.")
+            apply_play = box.addButton("Apply && Play", QMessageBox.AcceptRole)
+            anyway = box.addButton("Play anyway", QMessageBox.DestructiveRole)
+            box.addButton(QMessageBox.Cancel)
+            box.exec()
+            if box.clickedButton() is apply_play:
+                if not m.apply():
+                    return
+            elif box.clickedButton() is not anyway:
+                return
+        m.play()
 
     def open_settings(self):
         from jmd.ui.dialogs.settings import SettingsDialog

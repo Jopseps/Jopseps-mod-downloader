@@ -109,7 +109,7 @@ class RimWorldHandler(GameHandler):
 
     def can_apply(self, ctx):
         if not self.config_path(ctx):
-            return "ModsConfig.xml not found. Start RimWorld once, or set its path in the profile."
+            return "ModsConfig.xml not found. Start RimWorld once, or set its path in Profile settings."
         return ""
 
     def scan(self, ctx):
