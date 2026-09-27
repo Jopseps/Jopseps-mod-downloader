@@ -90,7 +90,7 @@ class RimWorldHandler(GameHandler):
         return os.path.expanduser("~/.local/share/Steam/steamapps/common/RimWorld/Mods")
 
     # === MANAGER ===
-    def place_download(self, profile, mod_id, content_path, on_fallback=None):
+    def place_download(self, profile, mod_id, content_path, on_fallback=None, meta=None):
         """Always into the mod folder: ModsConfig.xml, not the folder, decides what's active."""
         if not profile.mod_dir:
             return content_path

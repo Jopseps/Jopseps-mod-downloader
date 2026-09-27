@@ -60,6 +60,7 @@ class GameHandler:
     supports_order = False       # load order exists and can be written
     supports_steam_toggle = False
     process_names = ()           # executable names, to warn before writing while the game runs
+    fixed_sync_mode = ""         # set when the game only works one way: the profile's picker is hidden
 
     def import_list(self, path):
         """Workshop IDs from a list file."""
@@ -82,9 +83,10 @@ class GameHandler:
     def post_sync(self, mod_dir, mod_id):
         """Hook after a mod lands in mod_dir (e.g. write a descriptor). No-op by default."""
 
-    def place_download(self, profile, mod_id, content_path, on_fallback=None):
+    def place_download(self, profile, mod_id, content_path, on_fallback=None, meta=None):
         """Where a finished download goes. An update to an active mod syncs in place; a new mod is parked
-        (cache only for link/hardlink, the disabled folder for copy) so it shows up Inactive. → path"""
+        (cache only for link/hardlink, the disabled folder for copy) so it shows up Inactive. → path
+        meta: {"title", "preview_url", "time_updated", "save_png"(url, path)} for handlers that need them."""
         mod_dir = profile.mod_dir
         if not mod_dir:
             return content_path
@@ -200,6 +202,20 @@ class GameHandler:
             except (OSError, sync.SyncError) as err:
                 errors.append(f"{e.title}: {err}")
         return errors
+
+    def remove(self, ctx, e):
+        """Delete a mod from disk: the mod-folder entry (links never take their target), its parked copy,
+        and the cache copy of a JMM download."""
+        cache = ctx.cache_path(e.wid) if e.source == JMM else ""
+        folder = os.path.basename(e.path)
+        places = [e.path]
+        if ctx.mod_dir:
+            places += [os.path.join(ctx.mod_dir, folder), os.path.join(disabled_dir(ctx.mod_dir), folder)]
+        for path in dict.fromkeys(places):
+            if path != cache and os.path.lexists(path):
+                sync.remove(path)
+        if cache:
+            shutil.rmtree(cache)
 
     def is_running(self, ctx):
         return bool(self.process_names) and library.process_running(self.process_names)
