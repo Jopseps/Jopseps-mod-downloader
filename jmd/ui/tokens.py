@@ -174,6 +174,18 @@ QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 #UrlBox {{ background: {c['sunken']}; border: 1px solid {c['border']}; border-radius: 3px; }}
 #UrlBox[editing="true"] {{ border-color: {c['accent']}; }}
 QLineEdit#UrlEdit {{ background: transparent; border: none; padding: 0; font-family: "{FONT_MONO}"; font-size: 11.5px; color: {c['text-strong']}; }}
+#ModeSwitch {{ background: {c['sunken']}; border: 1px solid {c['border']}; border-radius: 4px; }}
+QPushButton[kind="seg"] {{ background: transparent; border: none; border-radius: 3px; min-height: 22px; max-height: 22px;
+  padding: 0 12px; color: {c['text-dim']}; font-size: 12px; }}
+QPushButton[kind="seg"]:hover {{ color: {c['text-strong']}; }}
+QPushButton[kind="seg"]:checked {{ background: {c['raised']}; color: {c['text-strong']}; }}
+#ManageView {{ background: {c['panel']}; }}
+#ModColumn {{ background: {c['panel']}; }}
+#ColHeader {{ background: {c['bg']}; border-bottom: 1px solid {c['border']}; }}
+#ColFilter {{ background: {c['panel']}; border-bottom: 1px solid {c['border']}; }}
+#Details, #DetailsBody {{ background: {c['panel-alt']}; }}
+#InfoBanner {{ background: {STATUS['outdated'][2]}; border-bottom: 1px solid {STATUS['outdated'][3]};
+  color: {STATUS['outdated'][1]}; padding: 8px 14px; font-size: 12px; }}
 #LogPanel {{ background: {c['sunken']}; border-top: 1px solid {c['black']}; }}
 #LogHeader:hover {{ background: #171f29; }}
 QPlainTextEdit#Log {{ background: {c['sunken']}; border: none; border-top: 1px solid #1e2935; border-radius: 0;

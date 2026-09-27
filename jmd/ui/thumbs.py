@@ -7,6 +7,7 @@ from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 from jmd import paths
+from jmd.ui.async_task import run_async
 
 
 def _sized(url, px):
@@ -56,6 +57,38 @@ class ThumbCache(QObject):
         img.save(os.path.join(self.folder, f"{key}.png"))
         self._mem[key] = QPixmap.fromImage(img)
         self.ready.emit(key)
+
+    def get_file(self, key, path):
+        """Thumbnail of a local image (RimWorld About/Preview.png), decoded off the UI thread, memory only."""
+        if key in self._mem:
+            return self._mem[key]
+        if not path or key in self._pending:
+            return None
+        self._pending.add(key)
+        size = self.size
+
+        def load():
+            img = QImage(path)
+            if img.isNull():
+                return None
+            side = min(img.width(), img.height())
+            img = img.copy(QRect((img.width() - side) // 2, (img.height() - side) // 2, side, side))
+            return img.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        def done(img):
+            self._pending.discard(key)
+            if img is not None:
+                self._mem[key] = QPixmap.fromImage(img)
+                self.ready.emit(key)
+
+        run_async(load, done, lambda _: self._pending.discard(key))
+        return None
+
+    def get_any(self, key, source):
+        """URL or local path."""
+        if source and not source.startswith(("http://", "https://")):
+            return self.get_file(key, source)
+        return self.get(key, source)
 
     def get_wide(self, key, url, w, h):
         """Non-square (game capsules)."""

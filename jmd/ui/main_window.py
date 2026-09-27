@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPixmap, QShortcut
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtCore import QUrl
+from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QSplitter,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from jmd import APP_NAME
 from jmd.ui import icons
 from jmd.ui.browser_pane import BrowserPane
 from jmd.ui.log_panel import LogPanel
+from jmd.ui.manage_view import ManageView
+from jmd.ui.manager import ManagerController
 from jmd.ui.queue_panel import LeftPanel
 from jmd.ui.thumbs import ThumbCache
 from jmd.ui.tokens import C, SIZE
@@ -37,6 +41,27 @@ class ProfileButton(QPushButton):
 
     def sizeHint(self):
         return QSize(self.layout().sizeHint().width(), 28)
+
+
+class ModeSwitch(QFrame):
+    """[ Manage | Download ] segmented control."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ModeSwitch")
+        self.setFixedHeight(28)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(2, 2, 2, 2)
+        lay.setSpacing(2)
+        self.group = QButtonGroup(self)
+        for i, text in enumerate(("Manage", "Download")):
+            b = QPushButton(text)
+            b.setProperty("kind", "seg")
+            b.setCheckable(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setToolTip(f"{text} (Ctrl+{i + 1})")
+            self.group.addButton(b, i)
+            lay.addWidget(b)
 
 
 def square_icon(pixmap, size, fallback):
@@ -87,11 +112,17 @@ class MainWindow(QMainWindow):
         tl.addWidget(word)
         tl.addWidget(div)
         tl.addWidget(self.profile_btn)
+        self.mode_switch = ModeSwitch()
+        self.mode_switch.group.idClicked.connect(self.set_mode)
+        tl.addWidget(self.mode_switch)
         tl.addStretch(1)
         tl.addWidget(self.settings_btn)
         root.addWidget(top)
 
         # === BODY ===
+        self.mgr = ManagerController(controller, self)
+        self.manage = ManageView(self.mgr, self.thumbs)
+        self.manage.webRequested.connect(self.open_web)
         self.left = LeftPanel(controller, self.thumbs)
         self.left.loginRequested.connect(self.open_login)
         self.browser = BrowserPane(controller)
@@ -103,7 +134,10 @@ class MainWindow(QMainWindow):
         split.setStretchFactor(1, 1)
         split.setSizes([SIZE["left"], 1440 - SIZE["left"]])
         self.split = split
-        root.addWidget(split, 1)
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self.manage)
+        self.pages.addWidget(split)
+        root.addWidget(self.pages, 1)
         self.log = LogPanel(controller)
         root.addWidget(self.log)
 
@@ -113,8 +147,25 @@ class MainWindow(QMainWindow):
         controller.loginEvent.connect(self._login_event)
         self.thumbs.ready.connect(lambda k: self.refresh_profile() if k.startswith("app_") else None)
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self.left._save_as)
+        QShortcut(QKeySequence("Ctrl+1"), self, activated=lambda: self.set_mode(0))
+        QShortcut(QKeySequence("Ctrl+2"), self, activated=lambda: self.set_mode(1))
+        self.set_mode(0 if controller.settings.mode == "manage" else 1, save=False)
+        self.mgr.refresh()
         self.refresh_profile()
         self._login_dialog = None
+
+    # === MODE ===
+    def set_mode(self, i, save=True):
+        self.pages.setCurrentIndex(i)
+        self.mode_switch.group.button(i).setChecked(True)
+        if save:
+            self.ctl.settings.mode = "manage" if i == 0 else "download"
+            self.ctl.save_settings()
+
+    def open_web(self, url):
+        self.set_mode(1)
+        if self.browser.view:
+            self.browser.view.setUrl(QUrl(url))
 
     # === PROFILE ===
     def _cap_pixmap(self, profile):
