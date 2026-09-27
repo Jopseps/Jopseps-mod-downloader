@@ -75,32 +75,3 @@ class QueueModel(QAbstractListModel):
         if role == Qt.DisplayRole:
             return node.title or node.id
         return None
-
-
-class InstalledModel(QAbstractListModel):
-    def __init__(self, controller, parent=None):
-        super().__init__(parent)
-        self.ctl = controller
-        self.rows = []
-        controller.installedChanged.connect(self.rebuild)
-        self.rebuild()
-
-    def rebuild(self):
-        self.beginResetModel()
-        recs = list(self.ctl.installed.values())
-        # outdated first, then by title
-        self.rows = sorted(recs, key=lambda r: (not r.outdated, (r.title or r.id).lower()))
-        self.endResetModel()
-
-    def rowCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self.rows)
-
-    def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid():
-            return None
-        rec = self.rows[index.row()]
-        if role == NodeRole:
-            return rec
-        if role == Qt.DisplayRole:
-            return rec.title or rec.id
-        return None

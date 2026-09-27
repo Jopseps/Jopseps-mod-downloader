@@ -1,19 +1,17 @@
 # Copyright (C) 2025-2026 Yusuf Mert Turan
 # SPDX-License-Identifier: AGPL-3.0-or-later
-import os
-
-from PySide6.QtCore import QPoint, QRect, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QLabel, QListView, QMenu,
-                               QPlainTextEdit, QPushButton, QStackedLayout, QStackedWidget, QVBoxLayout, QWidget)
+                               QPlainTextEdit, QPushButton, QStackedLayout, QVBoxLayout, QWidget)
 
 from jmd.core import models
 from jmd.core.ids import extract_ids
 from jmd.ui import icons
-from jmd.ui.delegates import InstalledDelegate, QueueDelegate
-from jmd.ui.queue_model import InstalledModel, QueueModel
+from jmd.ui.delegates import QueueDelegate
+from jmd.ui.queue_model import QueueModel
 from jmd.ui.tokens import C, SIZE, STATUS
-from jmd.ui.widgets import Spinner, button, hbox, label, restyle
+from jmd.ui.widgets import Spinner, button, hbox, label
 
 
 class PasteBox(QPlainTextEdit):
@@ -45,33 +43,6 @@ class PasteBox(QPlainTextEdit):
         super().keyPressEvent(event)
 
 
-class TabButton(QPushButton):
-    def __init__(self, text, parent=None):
-        super().__init__(parent)
-        self.setProperty("kind", "tab")
-        self.setCursor(Qt.PointingHandCursor)
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(10, 0, 10, 0)
-        lay.setSpacing(6)
-        self.text_label = QLabel(text)
-        self.badge = label("0", "badge")
-        self.warn = label("", "badge-warn")
-        for w in (self.text_label, self.badge, self.warn):
-            w.setAttribute(Qt.WA_TransparentForMouseEvents)
-            lay.addWidget(w)
-        self.warn.hide()
-        self.set_active(False)
-
-    def set_active(self, on):
-        self.setProperty("active", "true" if on else "false")
-        color = C["text-strong"] if on else C["text-dim"]
-        self.text_label.setStyleSheet(f"color:{color};font-weight:600;background:transparent;")
-        restyle(self)
-
-    def sizeHint(self):
-        return QSize(self.layout().sizeHint().width(), SIZE["tabs"] - 2)
-
-
 class ListSelect(QPushButton):
     """'≡ Queue ▾' dropdown: import / export / clear. Named lists live in Manage as modsets."""
 
@@ -85,9 +56,9 @@ class ListSelect(QPushButton):
         lay.setSpacing(6)
         ic = QLabel()
         ic.setPixmap(icons.pixmap("list", C["text-dim"], 14))
-        pre = label("Queue")
+        pre = label("List file")
         pre.setStyleSheet("font-weight:600;background:transparent;")
-        self.name = QLabel("import · export · clear")
+        self.name = QLabel("import · export · clear queue")
         self.name.setStyleSheet(f"color:{C['text-faint']};font-weight:400;background:transparent;")
         chev = QLabel()
         chev.setPixmap(icons.pixmap("chevron-down", C["text"], 14))
@@ -153,41 +124,30 @@ class LeftPanel(QFrame):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # === TABS ===
-        tabs = QFrame()
-        tabs.setObjectName("TabBar")
-        tabs.setFixedHeight(SIZE["tabs"])
-        tl = QHBoxLayout(tabs)
-        tl.setContentsMargins(8, 0, 8, 0)
-        tl.setSpacing(4)
-        self.tab_queue = TabButton("Queue")
-        self.tab_inst = TabButton("Installed")
-        tl.addWidget(self.tab_queue)
-        tl.addWidget(self.tab_inst)
-        tl.addStretch(1)
-        root.addWidget(tabs)
-        self.pages = QStackedWidget()
-        root.addWidget(self.pages, 1)
-        self.pages.addWidget(self._build_queue_page())
-        self.pages.addWidget(self._build_installed_page())
-        self.tab_queue.clicked.connect(lambda: self.show_tab(0))
-        self.tab_inst.clicked.connect(lambda: self.show_tab(1))
-        self.show_tab(0)
+        # === HEADER ===
+        head = QFrame()
+        head.setObjectName("TabBar")
+        head.setFixedHeight(SIZE["tabs"])
+        hl = QHBoxLayout(head)
+        hl.setContentsMargins(14, 0, 12, 0)
+        hl.setSpacing(8)
+        hl.addWidget(label("Queue", "strong"))
+        self.count = label("0", "badge")
+        hl.addWidget(self.count)
+        hl.addStretch(1)
+        root.addWidget(head)
+        root.addWidget(self._build_queue_page(), 1)
 
         # === WIRING ===
         c = controller
         c.queueChanged.connect(self.refresh)
         c.itemChanged.connect(lambda _: self.refresh_counts())
         c.runChanged.connect(self.refresh_footer)
-        c.installedChanged.connect(self.refresh_installed)
-        c.checkingChanged.connect(lambda _: self.refresh_installed())
-        c.profileChanged.connect(self.refresh_installed)
-        thumbs.ready.connect(lambda _: (self.queue_view.viewport().update(), self.inst_view.viewport().update()))
+        thumbs.ready.connect(lambda _: self.queue_view.viewport().update())
         self._spin = QTimer(self)
         self._spin.timeout.connect(self._tick)
         self._spin.start(33)
         self.refresh()
-        self.refresh_installed()
 
     # === QUEUE PAGE ===
     def _build_queue_page(self):
@@ -303,60 +263,14 @@ class LeftPanel(QFrame):
         if path:
             self.ctl.export_file(path)
 
-    # === INSTALLED PAGE ===
-    def _build_installed_page(self):
-        page = QWidget()
-        lay = QVBoxLayout(page)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(0)
-        head = QFrame()
-        head.setObjectName("InstHeader")
-        head.setFixedHeight(40)
-        hl = QHBoxLayout(head)
-        hl.setContentsMargins(12, 0, 12, 0)
-        hl.setSpacing(8)
-        self.inst_spin = Spinner()
-        self.inst_summary = label("", "dim")
-        self.sync_lbl = label("", "monodim")
-        self.sync_lbl.setStyleSheet(f"color:{C['text-faint']};")
-        self.sync_lbl.setMaximumWidth(150)
-        hl.addWidget(self.inst_spin)
-        hl.addWidget(self.inst_summary)
-        hl.addStretch(1)
-        hl.addWidget(self.sync_lbl)
-        lay.addWidget(head)
-        self.inst_model = InstalledModel(self.ctl, self)
-        self.inst_view = _list_view(InstalledDelegate(self.ctl, self.thumbs), self.inst_model)
-        lay.addWidget(self.inst_view, 1)
-        footer = QFrame()
-        footer.setObjectName("Footer")
-        footer.setMinimumHeight(56)
-        fl = QHBoxLayout(footer)
-        fl.setContentsMargins(10, 10, 10, 10)
-        fl.setSpacing(8)
-        self.check_btn = button("Check updates", size="lg", icon="refresh", icon_size=14)
-        self.check_btn.clicked.connect(self.ctl.check_updates)
-        self.update_btn = button("Update all (0)", "primary", "lg")
-        self.update_btn.clicked.connect(self.ctl.update_all)
-        fl.addWidget(self.check_btn)
-        fl.addWidget(self.update_btn)
-        fl.addStretch(1)
-        lay.addWidget(footer)
-        return page
-
     # === STATE ===
-    def show_tab(self, i):
-        self.pages.setCurrentIndex(i)
-        self.tab_queue.set_active(i == 0)
-        self.tab_inst.set_active(i == 1)
-
     def refresh(self):
         self.queue_stack.setCurrentIndex(0 if self.ctl.queue.nodes else 1)
         self.refresh_counts()
 
     def refresh_counts(self):
         items = self.ctl.queue.items()
-        self.tab_queue.badge.setText(str(len(items)))
+        self.count.setText(str(len(items)))
         self.refresh_footer()
 
     def refresh_footer(self):
@@ -383,44 +297,9 @@ class LeftPanel(QFrame):
         self.done_lbl.setText(f"{done} done")
         self.done_lbl.setVisible(done > 0 and not failed and not login)
 
-    def refresh_installed(self):
-        c = self.ctl
-        recs = list(c.installed.values())
-        outdated = len(c.outdated())
-        updating = len(c.updating)
-        self.tab_inst.badge.setText(str(len(recs)))
-        self.tab_inst.warn.setText(str(outdated))
-        self.tab_inst.warn.setVisible(outdated > 0)
-        self.inst_spin.setVisible(c.checking)
-        if c.checking:
-            self.inst_summary.setText(f"Checking {len(recs)} mods…")
-            self.inst_summary.setStyleSheet(f"color:{C['text']};font-size:12px;")
-        else:
-            self.inst_summary.setStyleSheet("")
-            if updating:
-                self.inst_summary.setText(f"Updating {updating}…")
-            elif outdated:
-                self.inst_summary.setText(f"{len(recs)} installed · {outdated} outdated")
-            else:
-                self.inst_summary.setText(f"{len(recs)} installed · all synced")
-        p = c.profile
-        if p:
-            mode = p.sync_mode.capitalize() + " → "
-            text = mode + (p.mod_dir.replace(os.path.expanduser("~"), "~") if p.mod_dir else "SteamCMD folder")
-            self.sync_lbl.setText(self.sync_lbl.fontMetrics().elidedText(text, Qt.ElideMiddle, 150))
-            self.sync_lbl.setToolTip(text)
-        self.check_btn.setText("Checking…" if c.checking else "Check updates")
-        self.check_btn.setEnabled(not c.checking and bool(recs) and c.run is None)
-        busy = c.checking or c.run is not None
-        if updating:
-            self.update_btn.setText(f"Updating {updating}…")
-        else:
-            self.update_btn.setText(f"Update all ({outdated})")
-        self.update_btn.setEnabled(outdated > 0 and not busy)
-
     def _tick(self):
         rows = self.queue_model.rows
-        if not rows or self.pages.currentIndex() != 0:
+        if not rows:
             return
         top = self.queue_view.indexAt(self.queue_view.viewport().rect().topLeft()).row()
         top = max(0, top)

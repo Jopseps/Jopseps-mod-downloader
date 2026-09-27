@@ -82,6 +82,11 @@ class AppController(QObject):
         self.switch_profile(profile.id, quiet=True)
         return profile
 
+    def save_profile(self, profile):
+        """After editing a profile's fields in place."""
+        self.store.save_profiles(self.profiles)
+        self.toast.emit(f"Saved {profile.name} settings")
+
     def switch_profile(self, pid, quiet=False):
         if self.run:
             self.toast.emit("Finish or cancel the download first")
@@ -522,7 +527,11 @@ class AppController(QObject):
         return [r for r in self.installed.values() if r.outdated]
 
     def update_all(self):
-        recs = self.outdated()
+        self.update_ids([r.id for r in self.outdated()])
+
+    def update_ids(self, ids):
+        """Re-download these installed mods (Update all, or one from the details panel)."""
+        recs = [self.installed[i] for i in ids if i in self.installed]
         if not recs or self.run:
             return
         exe = self.steamcmd_exe()
