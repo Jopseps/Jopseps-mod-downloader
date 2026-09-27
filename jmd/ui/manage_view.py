@@ -191,8 +191,7 @@ class ManageView(QFrame):
             box.addButton(QMessageBox.Cancel)
             box.exec()
             if box.clickedButton() is reload:
-                m.revert()
-                m.refresh()
+                m.reload()
                 return
             if box.clickedButton() is not go:
                 return
@@ -280,7 +279,8 @@ class ManageView(QFrame):
         box.setWindowTitle("Mods not installed")
         box.setIcon(QMessageBox.Question)
         box.setText(f"{len(missing)} mods in this modset aren't installed: {names}\n\n"
-                    f"Download {len(can)} of them now? They'll be switched on once they arrive.")
+                    f"Download {len(can)} of them now? They'll join the active list when they arrive "
+                    "(press Apply to save it).")
         go = box.addButton("Download", QMessageBox.AcceptRole)
         box.addButton("Not now", QMessageBox.RejectRole)
         box.exec()

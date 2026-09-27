@@ -32,6 +32,7 @@ class ManagerController(QObject):
         self.version = ""
         self.apply_block = ""    # why Apply can't run, '' when it can
         self.config_mtime = 0.0
+        self._fresh_mtime = True  # next scan may take the config's mtime (after load / our own Apply)
         self.scanning = False
         self.modset = ""         # name of the last loaded / saved modset
         self._rescan = False
@@ -66,6 +67,7 @@ class ManagerController(QObject):
 
     # === SCAN ===
     def _profile_changed(self):
+        self._fresh_mtime = True
         self.modset = ""
         self.modsetChanged.emit()
         self.entries, self.by_uid, self.dups = [], {}, []
@@ -101,7 +103,11 @@ class ManagerController(QObject):
                 return
             dirty = self.dirty
             self.entries, self.by_uid, self.dups = r["entries"], r["by_uid"], r["dups"]
-            self.version, self.apply_block, self.config_mtime = r["version"], r["block"], r["mtime"]
+            self.version, self.apply_block = r["version"], r["block"]
+            # mid-edit rescans (a download finished) keep the old mtime, so Apply still notices outside writes
+            if not dirty or self._fresh_mtime:
+                self.config_mtime = r["mtime"]
+                self._fresh_mtime = False
             self.saved = self._arrange(r["saved"])
             if not dirty:
                 self.staged = list(self.saved)
@@ -197,6 +203,12 @@ class ManagerController(QObject):
         self.staged = list(self.saved)
         self.cycles = []
         self._staged_changed()
+
+    def reload(self):
+        """Drop the edit and take what's on disk now, outside changes included."""
+        self._fresh_mtime = True
+        self.revert()
+        self.refresh()
 
     def _staged_changed(self):
         self.issues = validate.check(self.staged, self.by_uid, self.version, self.ordered, self.dups,
@@ -335,9 +347,10 @@ class ManagerController(QObject):
             for err in errors:
                 self.app._log(err, LOG_ERR)
         else:
-            n = len(self.staged)
-            self.app.toast.emit(f"Applied · {n} active")
-        self.saved = list(self.staged)
+            self.app.toast.emit(f"Applied · {len(self.staged)} active")
+            # only on success: after a failed write the rescan reads disk and the edit stays staged
+            self.saved = list(self.staged)
+            self._fresh_mtime = True
         self.refresh()
         return not errors
 

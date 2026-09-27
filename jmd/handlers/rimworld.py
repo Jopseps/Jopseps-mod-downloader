@@ -119,8 +119,9 @@ class RimWorldHandler(GameHandler):
         game = self.game_dir(ctx)
         out = rw.scan_builtin(game, version)
         folders = [ctx.mod_dir] if ctx.mod_dir else []
-        if game and os.path.join(game, "Mods") not in folders:
-            folders.append(os.path.join(game, "Mods"))
+        game_mods = os.path.join(game, "Mods") if game else ""
+        if game_mods and os.path.realpath(game_mods) not in {os.path.realpath(f) for f in folders}:
+            folders.append(game_mods)
         for root in folders:
             for e in rw.scan_folder(root, LOCAL, version):
                 rec = ctx.installed.get(e.wid)
