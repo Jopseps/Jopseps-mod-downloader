@@ -218,9 +218,11 @@ class GamePicker(QWidget):
         sync_col.setSpacing(6)
         sync_col.addWidget(label("Sync mode", "section"))
         self.copy_card = OptionCard("Copy (recommended)", "Copies each mod into the mod folder.")
+        self.hard_card = OptionCard("Hardlink", "No extra space, real folders. Same drive as the cache.")
         self.link_card = OptionCard("Link", "Symlink / junction. Saves disk space.")
         sync_group = QButtonGroup(self)
         sync_group.addButton(self.copy_card)
+        sync_group.addButton(self.hard_card)
         sync_group.addButton(self.link_card)
         self.copy_card.setChecked(True)
         self.link_warn = QLabel()
@@ -237,6 +239,7 @@ class GamePicker(QWidget):
         self.link_warn.hide()
         self.link_card.toggled.connect(self.link_warn.setVisible)
         sync_col.addWidget(self.copy_card)
+        sync_col.addWidget(self.hard_card)
         sync_col.addWidget(self.link_card)
         sync_col.addWidget(self.link_warn)
         dl.addLayout(sync_col)
@@ -383,7 +386,9 @@ class GamePicker(QWidget):
             self.folder.setText(path)
 
     def sync_mode(self):
-        return "link" if self.link_card.isChecked() else "copy"
+        if self.link_card.isChecked():
+            return "link"
+        return "hardlink" if self.hard_card.isChecked() else "copy"
 
     def result(self):
         g = self.selected

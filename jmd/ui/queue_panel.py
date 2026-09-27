@@ -419,7 +419,7 @@ class LeftPanel(QFrame):
                 self.inst_summary.setText(f"{len(recs)} installed · all synced")
         p = c.profile
         if p:
-            mode = "Link → " if p.sync_mode == "link" else "Copy → "
+            mode = p.sync_mode.capitalize() + " → "
             text = mode + (p.mod_dir.replace(os.path.expanduser("~"), "~") if p.mod_dir else "SteamCMD folder")
             self.sync_lbl.setText(self.sync_lbl.fontMetrics().elidedText(text, Qt.ElideMiddle, 150))
             self.sync_lbl.setToolTip(text)

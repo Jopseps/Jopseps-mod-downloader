@@ -325,7 +325,7 @@ class OnboardingDialog(Dialog):
         v["Profile"].setText(f'{r["name"]} <span style="font-family:\'JetBrains Mono\';font-size:11px;'
                              f'color:{C["text-dim"]}">{r["app_id"]}</span>')
         v["Mod folder"].setText(r["mod_dir"] or "SteamCMD folder (no copy)")
-        v["Sync mode"].setText("Link" if r["sync_mode"] == "link" else "Copy")
+        v["Sync mode"].setText(r["sync_mode"].capitalize())
         v["Handler"].setText(self.picker.handler.label)
 
     # === NAV ===
