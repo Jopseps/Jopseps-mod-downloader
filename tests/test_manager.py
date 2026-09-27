@@ -243,5 +243,110 @@ class HardlinkTest(unittest.TestCase):
             self.assertFalse(os.path.samefile(os.path.join(src, "big.bin"), os.path.join(dst, "big.bin")))
 
 
+def _mod(root, folder, about=None):
+    os.makedirs(os.path.join(root, folder, "About"), exist_ok=True)
+    if about:
+        with open(os.path.join(root, folder, "About", "About.xml"), "w") as f:
+            f.write(about)
+
+
+class GenericHandlerTest(unittest.TestCase):
+    def _ctx(self, t, mode):
+        from jmd.handlers.base import GameContext
+        profile = models.Profile(id="g", name="G", app_id=10, mod_dir=os.path.join(t, "Mods"), sync_mode=mode)
+        content = os.path.join(t, "cache", "content", "10")
+        lib = os.path.join(t, "lib")
+        installed = {"111": models.InstalledRecord(id="111", title="Downloaded")}
+        _mod(content, "111")
+        _mod(os.path.join(t, "Mods"), "handmade")
+        _mod(os.path.join(lib, "steamapps", "workshop", "content", "10"), "222")
+        return GameContext(profile, installed, content, [lib])
+
+    def _roundtrip(self, mode):
+        from jmd.handlers import get
+        with tempfile.TemporaryDirectory() as t:
+            ctx = self._ctx(t, mode)
+            h = get("generic")
+            if mode != "copy":
+                sync.sync_item(ctx.cache_path("111"), ctx.mod_dir, "111", mode)
+            else:
+                shutil.copytree(ctx.cache_path("111"), os.path.join(ctx.mod_dir, "111"))
+            by_uid, dups = mods.index(h.scan(ctx))
+            self.assertEqual(by_uid["111"].source, mods.JMM)
+            self.assertEqual(by_uid["111"].name, "Downloaded")
+            self.assertFalse(by_uid["222"].toggleable)
+            self.assertEqual(sorted(h.read_active(ctx, by_uid.values())), ["111", "222", "handmade"])
+            # everything off
+            self.assertEqual(h.write_active(ctx, list(by_uid.values()), ["222"]), [])
+            self.assertEqual(os.listdir(ctx.mod_dir), [])
+            by_uid, _ = mods.index(h.scan(ctx))
+            self.assertEqual(h.read_active(ctx, by_uid.values()), ["222"])
+            self.assertTrue(os.path.isdir(ctx.cache_path("111")))
+            # and back on
+            self.assertEqual(h.write_active(ctx, list(by_uid.values()), ["111", "handmade"]), [])
+            self.assertEqual(sorted(os.listdir(ctx.mod_dir)), ["111", "handmade"])
+            self.assertEqual(os.path.islink(os.path.join(ctx.mod_dir, "111")), mode == "link")
+
+    def test_copy(self):
+        self._roundtrip("copy")
+
+    def test_link(self):
+        self._roundtrip("link")
+
+    def test_hardlink(self):
+        self._roundtrip("hardlink")
+
+
+class RimWorldHandlerTest(unittest.TestCase):
+    def test_scan_read_write(self):
+        from jmd.handlers import get
+        from jmd.handlers.base import GameContext
+        with tempfile.TemporaryDirectory() as t:
+            game = os.path.join(t, "RimWorld")
+            os.makedirs(game)
+            with open(os.path.join(game, "Version.txt"), "w") as f:
+                f.write("1.6.4630 rev467")
+            _mod(os.path.join(game, "Data"), "Core", "<ModMetaData><packageId>Ludeon.RimWorld</packageId><name>Core</name></ModMetaData>")
+            shutil.copytree(os.path.join(FIX, "Mods"), os.path.join(game, "Mods"))
+            lib = os.path.join(t, "lib")
+            _mod(os.path.join(lib, "steamapps", "workshop", "content", "294100"), "2009463077",
+                 "<ModMetaData><packageId>brrainz.harmony</packageId><name>Harmony</name></ModMetaData>")
+            shutil.copytree(os.path.join(FIX, "Mods", "3806038418"),
+                            os.path.join(lib, "steamapps", "workshop", "content", "294100", "3806038418"))
+            cfg = os.path.join(t, "ModsConfig.xml")
+            shutil.copy(os.path.join(FIX, "ModsConfig.xml"), cfg)
+            profile = models.Profile(id="r", name="R", app_id=294100, mod_dir=os.path.join(game, "Mods"),
+                                     handler="rimworld", game_dir=game, config_path=cfg)
+            ctx = GameContext(profile, {"3761824516": models.InstalledRecord(id="3761824516", file_size=5)}, "", [lib])
+            h = get("rimworld")
+            self.assertEqual(h.game_version(ctx), "1.6.4630 rev467")
+            by_uid, dups = mods.index(h.scan(ctx))
+            self.assertEqual(by_uid["ludeon.rimworld"].source, mods.BUILTIN)
+            self.assertFalse(by_uid["ludeon.rimworld"].toggleable)
+            self.assertEqual(by_uid["sereq.rusticworkbenches"].source, mods.JMM)
+            self.assertEqual(by_uid["brrainz.harmony"].source, mods.STEAM)
+            self.assertEqual(dups, ["hyaukyuu.techapparel"])            # Mods/ copy + Steam copy
+            self.assertEqual(by_uid["hyaukyuu.techapparel"].source, mods.LOCAL)
+            active = h.read_active(ctx, by_uid)
+            self.assertEqual(active[:2], ["brrainz.harmony", "ludeon.rimworld"])
+            self.assertIn("hyaukyuu.techapparel", active)              # '_steam' dropped
+            order, _ = sorting.topo_sort(["sereq.rusticworkbenches", "ludeon.rimworld", "brrainz.harmony"], by_uid, h.tier)
+            self.assertEqual(h.write_active(ctx, list(by_uid.values()), order), [])
+            self.assertEqual(rimworld.read_active(cfg), ["brrainz.harmony", "ludeon.rimworld", "sereq.rusticworkbenches"])
+
+    def test_no_config_blocks_apply(self):
+        from jmd.handlers import get
+        from jmd.handlers.base import GameContext
+        profile = models.Profile(id="r", name="R", app_id=294100, handler="rimworld", config_path="")
+        h = get("rimworld")
+        orig = rimworld.find_config
+        rimworld.find_config = lambda libs=(): ""
+        try:
+            self.assertTrue(h.can_apply(GameContext(profile)))
+            self.assertEqual(h.read_active(GameContext(profile), {}), [])
+        finally:
+            rimworld.find_config = orig
+
+
 if __name__ == "__main__":
     unittest.main()
