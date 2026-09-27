@@ -146,7 +146,6 @@ class MainWindow(QMainWindow):
         controller.profileChanged.connect(self.refresh_profile)
         controller.loginEvent.connect(self._login_event)
         self.thumbs.ready.connect(lambda k: self.refresh_profile() if k.startswith("app_") else None)
-        QShortcut(QKeySequence("Ctrl+S"), self, activated=self.left._save_as)
         QShortcut(QKeySequence("Ctrl+1"), self, activated=lambda: self.set_mode(0))
         QShortcut(QKeySequence("Ctrl+2"), self, activated=lambda: self.set_mode(1))
         self.set_mode(0 if controller.settings.mode == "manage" else 1, save=False)

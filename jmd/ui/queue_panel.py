@@ -4,7 +4,7 @@ import os
 
 from PySide6.QtCore import QPoint, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QListView, QMenu,
+from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QLabel, QListView, QMenu,
                                QPlainTextEdit, QPushButton, QStackedLayout, QStackedWidget, QVBoxLayout, QWidget)
 
 from jmd.core import models
@@ -73,7 +73,7 @@ class TabButton(QPushButton):
 
 
 class ListSelect(QPushButton):
-    """'≡ List: Current ▾' dropdown (design: Dropdown · combo box)."""
+    """'≡ Queue ▾' dropdown: import / export / clear. Named lists live in Manage as modsets."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -85,10 +85,10 @@ class ListSelect(QPushButton):
         lay.setSpacing(6)
         ic = QLabel()
         ic.setPixmap(icons.pixmap("list", C["text-dim"], 14))
-        pre = label("List:")
-        pre.setStyleSheet(f"color:{C['text-dim']};font-weight:400;background:transparent;")
-        self.name = QLabel("Current")
-        self.name.setStyleSheet("font-weight:600;background:transparent;")
+        pre = label("Queue")
+        pre.setStyleSheet("font-weight:600;background:transparent;")
+        self.name = QLabel("import · export · clear")
+        self.name.setStyleSheet(f"color:{C['text-faint']};font-weight:400;background:transparent;")
         chev = QLabel()
         chev.setPixmap(icons.pixmap("chevron-down", C["text"], 14))
         for w in (ic, pre, self.name):
@@ -181,7 +181,6 @@ class LeftPanel(QFrame):
         c.runChanged.connect(self.refresh_footer)
         c.installedChanged.connect(self.refresh_installed)
         c.checkingChanged.connect(lambda _: self.refresh_installed())
-        c.listChanged.connect(self.list_select.name.setText)
         c.profileChanged.connect(self.refresh_installed)
         thumbs.ready.connect(lambda _: (self.queue_view.viewport().update(), self.inst_view.viewport().update()))
         self._spin = QTimer(self)
@@ -280,27 +279,14 @@ class LeftPanel(QFrame):
 
     def _list_menu(self):
         menu = QMenu(self)
-        menu.addAction("Save as…\tCtrl+S", self._save_as)
-        load = menu.addMenu("Load")
-        names = self.ctl.list_names() if self.ctl.profile else []
-        for name in names:
-            load.addAction(name, lambda n=name: self.ctl.load_list(n))
-        load.setEnabled(bool(names))
+        menu.addAction("Import list…", self._import)
+        menu.addAction("Export queue…", self._export)
         menu.addSeparator()
-        menu.addAction("Import…", self._import)
-        menu.addAction("Export…", self._export)
-        menu.addSeparator()
-        menu.addAction("Delete", self.ctl.delete_list)
+        menu.addAction("Clear queue", self.ctl.clear_queue)
         for a in menu.actions():
             a.setEnabled(a.isEnabled() and self.ctl.profile is not None)
         menu.setFixedWidth(self.list_select.width())
         menu.exec(self.list_select.mapToGlobal(self.list_select.rect().bottomLeft()) + QPoint(0, 4))
-
-    def _save_as(self):
-        name, ok = QInputDialog.getText(self, "Save list", "List name:",
-                                        text="" if self.ctl.list_name == "Current" else self.ctl.list_name)
-        if ok and name.strip():
-            self.ctl.save_list_as(name.strip())
 
     def _filters(self, pairs):
         return ";;".join(f"{name} ({pattern})" for name, pattern in pairs + [("All files", "*")])

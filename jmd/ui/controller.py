@@ -7,7 +7,7 @@ import time
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from jmd import handlers, paths
-from jmd.core import models, resolver, steam_api, steamcmd, sync
+from jmd.core import models, resolver, steam_api, steamcmd
 from jmd.core.downloader import Downloader
 from jmd.core.models import Group, InstalledRecord, Profile, QueueState
 from jmd.core.store import Store
@@ -33,7 +33,6 @@ class AppController(QObject):
     logLine = Signal(str, str)        # text, color
     toast = Signal(str)
     loginEvent = Signal(str, str)     # kind (prompt:guard|prompt:twofactor|prompt:mobile|failed|ok|done), detail
-    listChanged = Signal(str)
 
     def __init__(self, store=None, parent=None):
         super().__init__(parent)
@@ -43,7 +42,6 @@ class AppController(QObject):
         self.profile = None
         self.queue = QueueState()
         self.installed = {}
-        self.list_name = "Current"
         self.log = []
         self.checking = False
         self.updating = {}            # id -> pct, for Installed-tab update runs
@@ -95,7 +93,7 @@ class AppController(QObject):
         self.store.save_settings(self.settings)
         self.queue = self.store.load_queue(pid)
         self.installed = self.store.load_installed(pid)
-        self.list_name = "Current"
+        migrated = self.store.migrate_lists(pid)
         self.updating.clear()
         self.fresh.clear()
         self._visited_deps = {i.id for i in self.queue.items()}
@@ -106,8 +104,9 @@ class AppController(QObject):
         self.profileChanged.emit()
         self.queueChanged.emit()
         self.installedChanged.emit()
-        self.listChanged.emit(self.list_name)
-        if not quiet:
+        if migrated:
+            self.toast.emit(f"Saved lists moved to modsets: {', '.join(migrated)}")
+        elif not quiet:
             self.toast.emit(f"Switched to {self.profile.name}")
 
     def save_settings(self):
@@ -264,37 +263,14 @@ class AppController(QObject):
         if self.profile:
             self.store.save_queue(self.profile.id, self.queue)
 
-    # === NAMED LISTS ===
-    def list_names(self):
-        return self.store.list_names(self.profile.id) if self.profile else []
-
-    def save_list_as(self, name):
-        self.store.save_list(self.profile.id, name, self.queue)
-        self.list_name = name
-        self.listChanged.emit(name)
-        self.toast.emit(f'Saved as "{name}"')
-
-    def load_list(self, name):
-        q = self.store.load_list(self.profile.id, name)
-        if q is None:
-            self.toast.emit(f'List "{name}" not found')
+    # === LIST FILES ===
+    def clear_queue(self):
+        if self.run:
+            self.toast.emit("Finish or cancel the download first")
             return
-        self.queue = q
-        self.list_name = name
-        self._visited_deps = {i.id for i in q.items()}
-        self._changed()
-        self.listChanged.emit(name)
-        self.toast.emit(f'Loaded "{name}"')
-
-    def delete_list(self):
-        name = self.list_name
-        if name != "Current":
-            self.store.delete_list(self.profile.id, name)
         self.queue = QueueState()
-        self.list_name = "Current"
         self._changed()
-        self.listChanged.emit(self.list_name)
-        self.toast.emit(f'Deleted list "{name}"' if name != "Current" else "Cleared queue")
+        self.toast.emit("Cleared queue")
 
     def import_file(self, path):
         try:
@@ -332,11 +308,7 @@ class AppController(QObject):
         handler = self.handler
 
         def do_sync(mod_id, content_path):
-            if not profile.mod_dir:
-                return content_path
-            dst = sync.sync_item(content_path, profile.mod_dir, mod_id, profile.sync_mode, self._hardlink_fallback)
-            handler.post_sync(profile.mod_dir, mod_id)
-            return dst
+            return handler.place_download(profile, mod_id, content_path, self._hardlink_fallback)
         return do_sync
 
     def _hardlink_fallback(self, reason):
